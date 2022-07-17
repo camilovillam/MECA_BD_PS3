@@ -62,7 +62,27 @@ train_prop <-readRDS("./stores/train.rds")
 
 ##1.2. Exploración incial de los datos ----
 
-##Exploración de las bases de datos:
+
+view(train_prop)
+view(test_prop)
+
+table(train_prop$l3)
+table(train_prop$property_type)
+table(train_prop$operation_type)
+table(train_prop$currency)
+table(train_prop$ad_type)
+
+
+table(test_prop$l3)
+table(test_prop$property_type)
+table(test_prop$operation_type)
+table(test_prop$currency)
+table(test_prop$ad_type)
+
+
+
+
+#Exploración de las bases de datos:
 skim(train_prop)
 skim(test_prop)
 
@@ -104,6 +124,5 @@ all_equal(train_prop, test_prop)
 # Ej: Disponibilidad ascensor
 # Ej: Parqueaderos, número de parqueaderos
 # Ej: Área total, superficie (ver NAs, comentarios anteriores).
-
 
 
