@@ -203,3 +203,79 @@ ggplot()+
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         axis.text = element_text(size=6))
+
+
+
+#Cargar localidades:
+
+loc_bog <- read_sf("./stores/localidades_Bog_shp/Loca.shp")
+
+
+#Se transforma toda la base de datos de Train y test:
+
+train_prop <- train_prop %>% mutate(latp=lat,longp=lon)
+train_prop <- st_as_sf(train_prop ,coords=c('longp','latp'),crs=4686)
+
+test_prop <- test_prop %>% mutate(latp=lat,longp=lon)
+test_prop <- st_as_sf(test_prop ,coords=c('longp','latp'),crs=4686)
+
+
+#Validar los sistemas de coordenadas de los objetos:
+
+st_crs(ciclovias)
+st_crs(prop_subset)
+st_crs(sitios_ref)
+st_crs(upla)
+st_crs(loc_bog)
+st_crs(train_prop)
+
+#Transformar todos los sistemas de coordenadas a MAGNA-SIRGAS
+
+ciclovias<-st_transform(ciclovias, 4686)
+prop_subset<-st_transform(prop_subset, 4686)
+sitios_ref<-st_transform(sitios_ref, 4686)
+upla<-st_transform(upla, 4686)
+loc_bog<-st_transform(loc_bog, 4686)
+
+
+
+#Se grafican las propiedades en el mapa (junto con ciclovías y Uniandes, por ensayar)
+
+ggplot()+
+  geom_sf(data=upla
+          %>% filter(grepl("RIO",UPlNombre)==FALSE),
+          fill = NA) +
+  geom_sf(data=loc_bog
+          %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
+          fill = "pink")+
+  geom_sf(data=sitios_ref, col="red") +
+  geom_sf(data=ciclovias, col="blue") +
+  geom_sf(data=prop_subset, col="green") +
+  geom_sf(data=test_prop
+          %>% filter(grepl("Cundinamarca",l2)==TRUE),
+          col="orange",
+          size=1) +
+    theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))
+
+
+#Solo Chapinero:
+
+ggplot()+
+  geom_sf(data=loc_bog
+          %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
+          fill = NA)+
+  geom_sf(data=test_prop
+          %>% filter(grepl("Cundinamarca",l2)==TRUE),
+          col="orange",
+          size=1) +
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))
+
+
