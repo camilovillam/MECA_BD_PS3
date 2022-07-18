@@ -23,6 +23,7 @@ install.packages("pacman")
 library(pacman)
 
 p_load(rio,
+       sf,
        doParallel,
        gtsummary,
        GGally,
@@ -55,8 +56,8 @@ p_load(rio,
 
 setwd("~/GitHub/MECA_BD_PS3")
 
-test_prop <-readRDS("./stores/test.rds")
 train_prop <-readRDS("./stores/train.rds")
+test_prop <-readRDS("./stores/test.rds")
 
 
 
@@ -124,5 +125,81 @@ all_equal(train_prop, test_prop)
 # Ej: Disponibilidad ascensor
 # Ej: Parqueaderos, número de parqueaderos
 # Ej: Área total, superficie (ver NAs, comentarios anteriores).
+# Ej: Número de piso para el caso de apartamentos (prima de altura)
 
 
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# 2. ENSAYO: MAPA Y MEDICIÓN DE DISTANCIA ----
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+#Cargar las ciclovias (solo para ensayar)
+
+ciclovias <- read_sf("./stores/Ciclovia/Ciclovia.shp")
+
+ggplot()+
+  geom_sf(data=ciclovias) +
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))
+
+
+upla<-read_sf("./stores/upla/UPla.shp")
+
+
+sitios_ref <- data.frame(place="Uniandes",
+               lat=4.601590,
+               long=-74.066391,
+               nudge_y=-0.001)
+
+sitios_ref <- sitios_ref %>% mutate(latp=lat,longp=long)
+
+sitios_ref <- st_as_sf(sitios_ref,coords=c('longp','latp'),crs=4326)
+
+
+#Graficar Bogotá con las ciclovías en azul y Uniandes como punto de referencia:
+
+ggplot()+
+  geom_sf(data=upla
+          %>% filter(grepl("RIO",UPlNombre)==FALSE),
+          fill = NA) +
+  geom_sf(data=sitios_ref, col="red") +
+  geom_sf(data=ciclovias, col="blue") +
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))
+
+
+#Ejemplo de 6 sitios de la base de datos de Train (subset):
+
+prop_subset <- head(train_prop)
+
+prop_subset <- prop_subset %>% mutate(latp=lat,longp=lon)
+prop_subset <- st_as_sf(prop_subset,coords=c('longp','latp'),crs=4326)
+
+
+#Medición de distancias de las propiedades a Uniandes:
+
+prop_subset$dist_a_Uniandes <-st_distance(prop_subset,sitios_ref)
+
+
+
+#Se grafican las 6 propiedades en el mapa (junto con ciclovías y Uniandes, por ensayar)
+
+ggplot()+
+  geom_sf(data=upla
+          %>% filter(grepl("RIO",UPlNombre)==FALSE),
+          fill = NA) +
+  geom_sf(data=sitios_ref, col="red") +
+  geom_sf(data=ciclovias, col="blue") +
+  geom_sf(data=prop_subset, col="orange") +
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))
