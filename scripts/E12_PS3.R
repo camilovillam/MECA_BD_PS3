@@ -64,7 +64,7 @@ test_prop <-readRDS("./stores/test.rds") #11.150 Obs
 
 
 
-##1.2. Exploración incial de los datos ----
+##1.1. Exploración incial de los datos ----
 
 
 view(train_prop)
@@ -130,6 +130,7 @@ all_equal(train_prop, test_prop)
 # Ej: Área total, superficie (ver NAs, comentarios anteriores).
 # Ej: Número de piso para el caso de apartamentos (prima de altura)
 
+##1.2. Graficas NAs----
 ##NAs Base Train ---- 
 #Para sacar la gráfica de NAs
 
@@ -184,12 +185,12 @@ ggplot(porcentaje_na[1:nrow(porcentaje_na),],
 
 cantidad_na <- sapply(test_prop, function(x) sum(is.na(x)))
 cantidad_na <- data.frame(cantidad_na)
-porcentaje_na <- cantidad_na/nrow(train_prop)
+porcentaje_na <- cantidad_na/nrow(test_prop)
 
 # Porcentaje de observaciones faltantes. 
 p <- mean(porcentaje_na[,1])
 print(paste0("En promedio el ", round(p*100, 2), "% de las entradas están vacías"))
-#En promedio el 1.34% de las entradas están vacías"
+#En promedio el 12.91% de las entradas están vacías"
 
 #Se visualiza el porcentaje de observaciones faltantes por variable
 
@@ -209,8 +210,8 @@ print(paste("Las variables sin NAs son:", variables_sin_na))
 #created_on, lat, lon, l1, l2, l3, bedrooms, currency, property_type, 
 #operation_type
 
-porcentaje_na <- porcentaje_na[!filtro,]
-# 
+porcentaje_na <- porcentaje_na[!filtro,]# 
+
 orden <- porcentaje_na$variable[length(porcentaje_na$variable):1]
 
 porcentaje_na$variable <- factor(porcentaje_na$variable,
@@ -229,7 +230,16 @@ ggplot(porcentaje_na[1:nrow(porcentaje_na),],
   scale_x_continuous(labels = scales::percent, limits = c(0, 1))
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# 2. ENSAYO: MAPA Y MEDICIÓN DE DISTANCIA ----
+# 2. SEPARAR LAS BASES/ BOGOTÁ D.C. Y MEDELLÍN ----
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#Base de Bogotá D.C.
+train_bog <-subset(train_prop,train_prop$l3 =="Bogotá D.C")
+test_bog <-subset(test_prop,test_prop$l3 =="Bogotá D.C")                   
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# 3. ENSAYO: MAPA Y MEDICIÓN DE DISTANCIA ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -285,7 +295,6 @@ prop_subset <- st_as_sf(prop_subset,coords=c('longp','latp'),crs=4326)
 #Medición de distancias de las propiedades a Uniandes:
 
 prop_subset$dist_a_Uniandes <-st_distance(prop_subset,sitios_ref)
-
 
 
 #Se grafican las 6 propiedades en el mapa (junto con ciclovías y Uniandes, por ensayar)
@@ -353,7 +362,7 @@ ggplot()+
           fill = NA) +
   geom_sf(data=loc_bog
           %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
-          fill = "pink")+
+          fill = "gray")+
   geom_sf(data=sitios_ref, col="red") +
   geom_sf(data=ciclovias, col="blue") +
   geom_sf(data=prop_subset, col="green") +
