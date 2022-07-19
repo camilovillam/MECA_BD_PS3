@@ -23,10 +23,10 @@ install.packages("pacman")
 library(pacman)
 
 p_load(rio,
-       sf,
-       leaflet,
-       tmaptools, 
-       osmdata, 
+       sf, # Leer, escribir o manipular datos espaciales
+       leaflet, #Visualizaciones dinámicas
+       tmaptools, #geocode_OSM()
+       osmdata,  #Get OSM´s data
        doParallel,
        gtsummary,
        GGally,
@@ -59,8 +59,8 @@ p_load(rio,
 
 setwd("~/GitHub/MECA_BD_PS3")
 
-train_prop <-readRDS("./stores/train.rds")
-test_prop <-readRDS("./stores/test.rds")
+train_prop <-readRDS("./stores/train.rds") #107.567 Obs
+test_prop <-readRDS("./stores/test.rds") #11.150 Obs
 
 
 
@@ -70,21 +70,21 @@ test_prop <-readRDS("./stores/test.rds")
 view(train_prop)
 view(test_prop)
 
-table(train_prop$l3)
-table(train_prop$property_type)
-table(train_prop$operation_type)
-table(train_prop$currency)
-table(train_prop$ad_type)
+table(train_prop$l3) #Bogotá 86.211 Medellín: 21.356
+table(train_prop$property_type) #Apartamento 81.577 Casa:25.990
+table(train_prop$operation_type) #venta: total obs 107.567
+table(train_prop$currency) #COP: total obs 107.567
+table(train_prop$ad_type) #Propiedad: total obs 107.567
 
 
-table(test_prop$l3)
-table(test_prop$property_type)
-table(test_prop$operation_type)
-table(test_prop$currency)
-table(test_prop$ad_type)
+table(test_prop$l3) #Bogotá 793 Medellín: 10.357
+table(test_prop$property_type) #Apartamento 9.658 Casa:1.492
+table(test_prop$operation_type) #venta: total obs 11.150
+table(test_prop$currency) #COP: total obs 11.150
+table(test_prop$ad_type) #Propiedad: total obs 11.150
 
 
-
+#Las variables operation_type, currency y as_type no dan info relevante.
 
 #Exploración de las bases de datos:
 skim(train_prop)
@@ -105,7 +105,7 @@ all_equal(train_prop, test_prop)
 
 
 # Var		        Complete Rate (Train)		    Complete rate (test)
-# -------------------------------------------------------------------------
+
 # rooms  		 	      0.502				            0.515			
 # bathrooms 	  	  0.720				            0.617
 # surface_total 	  0.258				            0.185      
@@ -130,7 +130,103 @@ all_equal(train_prop, test_prop)
 # Ej: Área total, superficie (ver NAs, comentarios anteriores).
 # Ej: Número de piso para el caso de apartamentos (prima de altura)
 
+##NAs Base Train ---- 
+#Para sacar la gráfica de NAs
 
+cantidad_na <- sapply(train_prop, function(x) sum(is.na(x)))
+cantidad_na <- data.frame(cantidad_na)
+porcentaje_na <- cantidad_na/nrow(train_prop)
+
+# Porcentaje de observaciones faltantes. 
+p <- mean(porcentaje_na[,1])
+print(paste0("En promedio el ", round(p*100, 2), "% de las entradas están vacías"))
+#En promedio el 11.11% de las entradas están vacías"
+
+#Se visualiza el porcentaje de observaciones faltantes por variable
+
+# se ordena de mayor a menor
+porcentaje_na <- arrange(porcentaje_na, desc(cantidad_na))
+
+# se convierte el nombre de la fila en columna
+porcentaje_na <- rownames_to_column(porcentaje_na, "variable")
+
+# # se quitan las variables que no tienen NAs
+filtro <- porcentaje_na$cantidad_na == 0
+variables_sin_na <- porcentaje_na[filtro, "variable"]
+variables_sin_na <- paste(variables_sin_na, collapse = ", ")
+print(paste("Las variables sin NAs son:", variables_sin_na))
+# 
+#Las variables sin NAs son: property_id, ad_type, start_date, end_date, 
+#created_on, lat, lon, l1, l2, l3, bedrooms, price, currency, property_type, 
+#operation_type
+
+porcentaje_na <- porcentaje_na[!filtro,]
+# 
+orden <- porcentaje_na$variable[length(porcentaje_na$variable):1]
+
+porcentaje_na$variable <- factor(porcentaje_na$variable,
+                                 levels = orden)
+
+
+# Se grafica el % de NA de las diferentes variables de interés
+ggplot(porcentaje_na[1:nrow(porcentaje_na),], 
+       aes(y = variable, x = cantidad_na)) +
+  geom_bar(stat = "identity", fill = "darkblue") +
+  geom_text(aes(label = paste0(round(100*cantidad_na, 1), "%")),
+            colour = "white", position = "dodge", hjust = 1.3,
+            size = 2, fontface = "bold") +
+  theme_classic() +
+  labs(x = "Porcentaje de NAs", y = "Variables") +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1))
+
+##NAs Base Test ---- 
+#Para sacar la gráfica de NAs
+
+cantidad_na <- sapply(test_prop, function(x) sum(is.na(x)))
+cantidad_na <- data.frame(cantidad_na)
+porcentaje_na <- cantidad_na/nrow(train_prop)
+
+# Porcentaje de observaciones faltantes. 
+p <- mean(porcentaje_na[,1])
+print(paste0("En promedio el ", round(p*100, 2), "% de las entradas están vacías"))
+#En promedio el 1.34% de las entradas están vacías"
+
+#Se visualiza el porcentaje de observaciones faltantes por variable
+
+# se ordena de mayor a menor
+porcentaje_na <- arrange(porcentaje_na, desc(cantidad_na))
+
+# se convierte el nombre de la fila en columna
+porcentaje_na <- rownames_to_column(porcentaje_na, "variable")
+
+# # se quitan las variables que no tienen NAs
+filtro <- porcentaje_na$cantidad_na == 0
+variables_sin_na <- porcentaje_na[filtro, "variable"]
+variables_sin_na <- paste(variables_sin_na, collapse = ", ")
+print(paste("Las variables sin NAs son:", variables_sin_na))
+# 
+#Las variables sin NAs son: property_id, ad_type, start_date, end_date, 
+#created_on, lat, lon, l1, l2, l3, bedrooms, currency, property_type, 
+#operation_type
+
+porcentaje_na <- porcentaje_na[!filtro,]
+# 
+orden <- porcentaje_na$variable[length(porcentaje_na$variable):1]
+
+porcentaje_na$variable <- factor(porcentaje_na$variable,
+                                 levels = orden)
+
+
+# Se grafica el % de NA de las diferentes variables de interés
+ggplot(porcentaje_na[1:nrow(porcentaje_na),], 
+       aes(y = variable, x = cantidad_na)) +
+  geom_bar(stat = "identity", fill = "darkblue") +
+  geom_text(aes(label = paste0(round(100*cantidad_na, 1), "%")),
+            colour = "white", position = "dodge", hjust = 1.3,
+            size = 2, fontface = "bold") +
+  theme_classic() +
+  labs(x = "Porcentaje de NAs", y = "Variables") +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1))
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 2. ENSAYO: MAPA Y MEDICIÓN DE DISTANCIA ----
