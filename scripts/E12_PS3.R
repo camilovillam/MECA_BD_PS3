@@ -24,6 +24,9 @@ library(pacman)
 
 p_load(rio,
        sf,
+       leaflet,
+       tmaptools, 
+       osmdata, 
        doParallel,
        gtsummary,
        GGally,
@@ -229,6 +232,13 @@ st_crs(upla)
 st_crs(loc_bog)
 st_crs(train_prop)
 
+ciclovias
+prop_subset
+sitios_ref
+upla
+loc_bog
+train_prop
+
 #Transformar todos los sistemas de coordenadas a MAGNA-SIRGAS
 
 ciclovias<-st_transform(ciclovias, 4686)
@@ -279,3 +289,52 @@ ggplot()+
         axis.text = element_text(size=6))
 
 
+#Ensayos con Leaflet:
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=test_prop)
+leaflet() %>% addTiles() %>% addCircles(data=test_prop)
+leaflet() %>% addTiles() %>% addPolylines(data=ciclovias)
+leaflet() %>% addTiles() %>% addPolygons(data=loc_bog)
+
+#Solo Chapinero
+
+leaflet() %>% addTiles() %>% addPolygons(data=loc_bog%>% filter(grepl("CHAPINERO",LocNombre)==TRUE))
+
+
+#Propiedades de Test
+
+leaflet() %>% addTiles() %>% 
+  addPolygons(data=loc_bog %>% 
+                filter(grepl("CHAPINERO",LocNombre)==TRUE)) %>% 
+  addCircleMarkers(data=test_prop %>%
+                     filter(grepl("Cundinamarca",l2)==TRUE),
+                              col="red")
+
+
+#Ensayos adicionales:
+
+#Buscar sitio por nombre
+
+uniandes <- geocode_OSM("Universidad de los Andes, Bogotá", as.sf=T)
+uniandes
+
+leaflet() %>% addTiles() %>% addCircles(data=uniandes)
+uniandes <- st_transform(uniandes, 4686)
+
+
+#Features:
+
+available_features() %>% head(50)
+
+
+#Estaciones de metro en Medellín:
+
+## objeto osm
+metromed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
+  add_osm_feature(key="public_transport" , value="station") 
+
+metromed_sf <- metromed %>% osmdata_sf()
+metromed_sf
+metromed_station  <-  metromed_sf$osm_points
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
