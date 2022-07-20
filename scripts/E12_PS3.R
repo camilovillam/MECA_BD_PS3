@@ -239,7 +239,15 @@ test_bog <-subset(test_prop,test_prop$l3 =="Bogotá D.C")
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# 3. ENSAYO: MAPA Y MEDICIÓN DE DISTANCIA ----
+# 3. VARIABLES DE TEXTO E IMPUTACIÓN DE DATOS 
+
+##3.1. Variables de texto----
+
+##3.2. Imputación de datos----
+
+##3.3. Definición bases datos definitivas ----
+
+# 4. ENSAYO: MAPA Y MEDICIÓN DE DISTANCIA ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -442,3 +450,14 @@ metromed_sf
 metromed_station  <-  metromed_sf$osm_points
 
 leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# 5. MODELO BOGOTÁ D.C. ----
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# 6. MODELO MEDELLÍN ----
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
