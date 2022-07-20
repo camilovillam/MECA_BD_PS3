@@ -463,7 +463,7 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
 
 loc_bog <- read_sf("./stores/bogota/localidades_Bog_shp/Loca.shp") # Cargar localidades de Bogotá D.C.
 upz_bog <-read_sf("./stores/Bogota/upla/UPla.shp") # Subir las UPZ de Bogotá D.C.
-ciclo_bog <-read_sf("./stores/Bogota/Ciclovia/Cliclovia.shp") # Subir las ciclovias de Bogotá D.C.
+ciclo_bog <-read_sf("./stores/Bogota/Ciclovia/Ciclovia.shp") # Subir las ciclovias de Bogotá D.C.
 monu_bog <-read_sf("./stores/Bogota/monumentos/Monumentos.shp") # Subir los monumentos de Bogotá D.C.
 parques_bog <-read_sf("./stores/Bogota/Parques/parques.shp") # Subir los parques de Bogotá D.C.
 sector_bog <-read_sf("./stores/Bogota/sector/SECTOR.shp") # Subir el sector catastral de Bogotá D.C.
@@ -471,29 +471,42 @@ leg_bog <-read_sf("./stores/Bogota/barriolegalizado/BarrioLegalizado.shp") # Sub
 teatro_bog <-read_sf("./stores/Bogota/teatroauditorio/TeatroAuditorio.shp") # Subir los teatros/auditorios de Bogotá D.C.
 seg_bog <-read_sf("./stores/Bogota/indiceseguridadnocturna/IndiceSeguridadUPZ.shp") # Subir los índices de Seguridad por UPZ de Bogotá D.C.
 metro_bog <-read_sf("./stores/Bogota/estacionesMetro/ESTACIONES.shp") # Subir las estaciones de Metro de Bogotá D.C.
-mzn_bog <-read_sf("./stores/Bogota/manz/MANZ.shp") # Subir las manzanas de Bogotá D.C.
+mz_bog <-read_sf("./stores/Bogota/manz/MANZ.shp") # Subir las manzanas de Bogotá D.C.
 avaluo_bog <-read_sf("./stores/Bogota/avaluo_manzana/Avaluo_Manzana.shp") # Subir el avaluo de las manzanas de Bogotá D.C.
 
+#Transformar todos los sistemas de coordenadas a 4326
+loc_bog<-st_transform(loc_bog, 4326)
+upz_bog<-st_transform(upz_bog, 4326)
+ciclo_bog<-st_transform(ciclo_bog, 4326)
+monu_bog<-st_transform(monu_bog, 4326)
+parques_bog<-st_transform(parques_bog, 4326)
+sector_bog<-st_transform(sector_bog, 4326)
+leg_bog<-st_transform(leg_bog, 4326)
+teatro_bog<-st_transform(teatro_bog, 4326)
+seg_bog<-st_transform(seg_bog, 4326)
+metro_bog <-st_transform(metro_bog, 4326)
+mz_bog<-st_transform(mz_bog, 4326)
+avaluo_bog<-st_transform(avaluo_bog, 4326)
 
+#Primera prueba gráfica
+ggplot()+
+  geom_sf(data=upz_bog
+          %>% filter(grepl("RIO",UPlNombre)==FALSE),
+          fill = NA) +
+  geom_sf(data=loc_bog
+          %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
+          fill = "gray")+
+  geom_sf(data=parques_bog, col="orange") +
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))
 
-
-leaflet() %>% addTiles() %>% addPolygons(data=mnz , color="red") %>% addCircles(data=house)
-
-## spatial join
-house_mnz = st_join(x = house,y = mnz)
-colnames(house_mnz)
-
-## average block
-house_mnz = house_mnz %>%
-  group_by(MANZ_CCNCT) %>%
-  mutate(new_surface_2=median(surface_total,na.rm=T))
-
-table(is.na(house_mnz$surface_total))
-
-table(is.na(house_mnz$surface_total),
-      is.na(house_mnz$new_surface)) # ahora solo tenemos 221 missing values
-
-
+#Primera prueba join
+train_bog <- st_join(train_bog,loc_bog[,c('LocCodigo','LocNombre')])
+train_bog <- st_join(train_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
+train_bog <- st_join(train_bog,mz_bog[,c('MANCODIGO')])
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 6. MODELO MEDELLÍN ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
