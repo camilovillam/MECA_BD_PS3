@@ -322,10 +322,10 @@ loc_bog <- read_sf("./stores/localidades_Bog_shp/Loca.shp")
 #Se transforma toda la base de datos de Train y test:
 
 train_prop <- train_prop %>% mutate(latp=lat,longp=lon)
-train_prop <- st_as_sf(train_prop ,coords=c('longp','latp'),crs=4686)
+train_prop <- st_as_sf(train_prop ,coords=c('longp','latp'),crs=4326)
 
 test_prop <- test_prop %>% mutate(latp=lat,longp=lon)
-test_prop <- st_as_sf(test_prop ,coords=c('longp','latp'),crs=4686)
+test_prop <- st_as_sf(test_prop ,coords=c('longp','latp'),crs=4326)
 
 
 #Validar los sistemas de coordenadas de los objetos:
@@ -344,13 +344,12 @@ upla
 loc_bog
 train_prop
 
-#Transformar todos los sistemas de coordenadas a MAGNA-SIRGAS
-
-ciclovias<-st_transform(ciclovias, 4686)
-prop_subset<-st_transform(prop_subset, 4686)
-sitios_ref<-st_transform(sitios_ref, 4686)
-upla<-st_transform(upla, 4686)
-loc_bog<-st_transform(loc_bog, 4686)
+#Transformar todos los sistemas de coordenadas a 4326
+ciclovias<-st_transform(ciclovias, 4326)
+prop_subset<-st_transform(prop_subset, 4326)
+sitios_ref<-st_transform(sitios_ref, 4326)
+upla<-st_transform(upla, 4326)
+loc_bog<-st_transform(loc_bog, 4326)
 
 
 
@@ -424,7 +423,7 @@ uniandes <- geocode_OSM("Universidad de los Andes, Bogotá", as.sf=T)
 uniandes
 
 leaflet() %>% addTiles() %>% addCircles(data=uniandes)
-uniandes <- st_transform(uniandes, 4686)
+uniandes <- st_transform(uniandes, 4326)
 
 
 #Features:
