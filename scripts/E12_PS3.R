@@ -455,6 +455,8 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
 # 5. MODELO BOGOTÁ D.C. ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+##5.1. Información Bogotá ----
+
 #– At least 2 of these models should include predictors coming from external
 #sources; both can be from open street maps.
 #At least 2 predictors coming from the title or description of the properties.
@@ -475,18 +477,18 @@ mz_bog <-read_sf("./stores/Bogota/manz/MANZ.shp") # Subir las manzanas de Bogot�
 avaluo_bog <-read_sf("./stores/Bogota/avaluo_manzana/Avaluo_Manzana.shp") # Subir el avaluo de las manzanas de Bogotá D.C.
 
 #Transformar todos los sistemas de coordenadas a 4326
-loc_bog<-st_transform(loc_bog, 4326)
-upz_bog<-st_transform(upz_bog, 4326)
-ciclo_bog<-st_transform(ciclo_bog, 4326)
-monu_bog<-st_transform(monu_bog, 4326)
+loc_bog    <-st_transform(loc_bog, 4326)
+upz_bog    <-st_transform(upz_bog, 4326)
+ciclo_bog  <-st_transform(ciclo_bog, 4326)
+monu_bog   <-st_transform(monu_bog, 4326)
 parques_bog<-st_transform(parques_bog, 4326)
-sector_bog<-st_transform(sector_bog, 4326)
-leg_bog<-st_transform(leg_bog, 4326)
-teatro_bog<-st_transform(teatro_bog, 4326)
-seg_bog<-st_transform(seg_bog, 4326)
-metro_bog <-st_transform(metro_bog, 4326)
-mz_bog<-st_transform(mz_bog, 4326)
-avaluo_bog<-st_transform(avaluo_bog, 4326)
+sector_bog <-st_transform(sector_bog, 4326)
+leg_bog    <-st_transform(leg_bog, 4326)
+teatro_bog <-st_transform(teatro_bog, 4326)
+seg_bog    <-st_transform(seg_bog, 4326)
+metro_bog  <-st_transform(metro_bog, 4326)
+mz_bog     <-st_transform(mz_bog, 4326)
+avaluo_bog <-st_transform(avaluo_bog, 4326)
 
 #Primera prueba gráfica
 ggplot()+
@@ -503,10 +505,84 @@ ggplot()+
         panel.grid.minor = element_blank(),
         axis.text = element_text(size=6))
 
-#Primera prueba join
+#Primera prueba join para train
 train_bog <- st_join(train_bog,loc_bog[,c('LocCodigo','LocNombre')])
 train_bog <- st_join(train_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
-train_bog <- st_join(train_bog,mz_bog[,c('MANCODIGO')])
+train_bog <- st_join(train_bog,seg_bog[,c('t_puntos','p_upl')])
+
+sf_use_s2(FALSE)
+train_bog <- st_join(train_bog,mz_bog[,c('MANCODIGO','SECCODIGO')])
+train_bog <- st_join(train_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM','AVALUO_CAT')])
+
+#Primera prueba join para test
+test_bog <- st_join(test_bog,loc_bog[,c('LocCodigo','LocNombre')])
+test_bog <- st_join(test_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
+test_bog <- st_join(test_bog,seg_bog[,c('t_puntos','p_upl')])
+
+sf_use_s2(FALSE)
+test_bog <- st_join(test_bog,mz_bog[,c('MANCODIGO','SECCODIGO')])
+test_bog <- st_join(test_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM','AVALUO_CAT')])
+
+skim(train_bog)
+skim(test_bog)
+
+#leaflet() %>% addTiles() %>%addPolygons(data=mz_bog)
+
+##5.2. Prueba base solo para chapinero ----
+
+#Base de chapinero ----
+train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
+
+skim(train_cha)
+
+cha.na_remove <- train_cha$MANZANA_ID[!is.na(train_cha$MANZANA_ID)]
+
+#prueba de remover NAs de manzanas ----
+train_cha2 <- train_cha[(!is.na(train_cha$MANZANA_ID)), ]
+
+
+##5.3. Partición de la base chapinero en tres----
+
+#La base de datos Train se divide en tres particiones:
+# Tr_train: Entrenar el modelo
+# Tr_eval: Evaluar, ajustar y refinar el modelo
+# Tr_test: Probar el modelo
+
+
+# Revisar: Generamos las particiones
+set.seed(100)
+split1 <- createDataPartition(train_cha2$price, p = .7)[[1]]
+length(split1) 
+
+other <- train_cha2[-split1,]
+Tr_train <- train_cha2[split1,]
+
+split2 <- createDataPartition(other$price, p = 1/3)[[1]]
+
+Tr_eval <- other[ split2,]
+Tr_test <- other[-split2,]
+
+##5.3. Partición de la base chapinero en tres----
+
+##5.3. Modelos de regresión ----
+
+modelo1 <- as.formula (price ~ AVALUO_COM)
+
+modelo2 <- as.formula (price ~ AVALUO_COM+UPlNombre)
+
+modelo3 <- as.formula (price ~ AVALUO_COM+UPlNombre+GRUPOP_TER)
+
+
+reg1<-lm(modelo1,Tr_train)
+reg2<-lm(modelo2,Tr_train)
+reg3<-lm(modelo3,Tr_train)
+
+stargazer(reg1,type="text")
+stargazer(reg2,type="text")
+stargazer(reg3,type="text")
+
+
+
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 6. MODELO MEDELLÍN ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
