@@ -535,8 +535,6 @@ train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
 
 skim(train_cha)
 
-cha.na_remove <- train_cha$MANZANA_ID[!is.na(train_cha$MANZANA_ID)]
-
 #prueba de remover NAs de manzanas ----
 train_cha2 <- train_cha[(!is.na(train_cha$MANZANA_ID)), ]
 
