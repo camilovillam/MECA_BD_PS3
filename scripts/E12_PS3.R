@@ -475,6 +475,7 @@ seg_bog <-read_sf("./stores/Bogota/indiceseguridadnocturna/IndiceSeguridadUPZ.sh
 metro_bog <-read_sf("./stores/Bogota/estacionesMetro/ESTACIONES.shp") # Subir las estaciones de Metro de Bogotá D.C.
 mz_bog <-read_sf("./stores/Bogota/manz/MANZ.shp") # Subir las manzanas de Bogotá D.C.
 avaluo_bog <-read_sf("./stores/Bogota/avaluo_manzana/Avaluo_Manzana.shp") # Subir el avaluo de las manzanas de Bogotá D.C.
+estrato_bog <-read_sf("./stores/Bogota/manzanaestratificacion/ManzanaEstratificacion.shp") # Subir el avaluo de las manzanas de Bogotá D.C.
 
 #Transformar todos los sistemas de coordenadas a 4326
 loc_bog    <-st_transform(loc_bog, 4326)
@@ -489,6 +490,7 @@ seg_bog    <-st_transform(seg_bog, 4326)
 metro_bog  <-st_transform(metro_bog, 4326)
 mz_bog     <-st_transform(mz_bog, 4326)
 avaluo_bog <-st_transform(avaluo_bog, 4326)
+estrato_bog <-st_transform(estrato_bog, 4326)
 
 #Primera prueba gráfica
 ggplot()+
@@ -509,6 +511,8 @@ ggplot()+
 train_bog <- st_join(train_bog,loc_bog[,c('LocCodigo','LocNombre')])
 train_bog <- st_join(train_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
 train_bog <- st_join(train_bog,seg_bog[,c('t_puntos','p_upl')])
+train_bog <- st_join(train_bog,sector_bog[,c('SCANOMBRE')])
+train_bog <- st_join(train_bog,estrato_bog[,c('ESTRATO')])
 
 sf_use_s2(FALSE)
 train_bog <- st_join(train_bog,mz_bog[,c('MANCODIGO','SECCODIGO')])
@@ -518,6 +522,8 @@ train_bog <- st_join(train_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_C
 test_bog <- st_join(test_bog,loc_bog[,c('LocCodigo','LocNombre')])
 test_bog <- st_join(test_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
 test_bog <- st_join(test_bog,seg_bog[,c('t_puntos','p_upl')])
+test_bog <- st_join(test_bog,sector_bog[,c('SCANOMBRE')])
+test_bog <- st_join(test_bog,estrato_bog[,c('ESTRATO')])
 
 sf_use_s2(FALSE)
 test_bog <- st_join(test_bog,mz_bog[,c('MANCODIGO','SECCODIGO')])
@@ -560,24 +566,85 @@ split2 <- createDataPartition(other$price, p = 1/3)[[1]]
 Tr_eval <- other[ split2,]
 Tr_test <- other[-split2,]
 
-##5.3. Partición de la base chapinero en tres----
+##5.4. formas funcionales propuestas ----
 
-##5.3. Modelos de regresión ----
+modelo1 <- as.formula (price ~ AVALUO_COM+p_upl+SCANOMBRE+rooms)
 
-modelo1 <- as.formula (price ~ AVALUO_COM)
+modelo2 <- as.formula (price ~ p_upl+SCANOMBRE+rooms+bathrooms)
 
-modelo2 <- as.formula (price ~ AVALUO_COM+UPlNombre)
+modelo3 <- as.formula (price ~ p_upl+rooms+bathrooms+surface_covered)
 
-modelo3 <- as.formula (price ~ AVALUO_COM+UPlNombre+GRUPOP_TER)
+install.packages("lagsarlmtree")
+library(lagsarlmtree)
+
+reg1<-lagsarlm(modelo1,Tr_train, listw)
+reg2<-lagsarlm(modelo2,Tr_train)
+reg3<-lagsarlm(modelo3,Tr_train)
+
+stargazer(reg1,reg2,reg3,type="text")
+
+##5.5. Modelos de predicción ----
+
+#Entrenamiento de modelos CV K-Fold
+
+modelo_estimado1 <- train(modelo1,
+                          data = Tr_train,
+                          trControl=trainControl(method="cv",number=10),
+                          method="lm")
+
+modelo_estimado2 <- train(modelo2,
+                          data = Tr_train,
+                          trControl=trainControl(method="cv",number=10),
+                          method="lm")
+
+modelo_estimado3 <- train(modelo3,
+                          data = Tr_train,
+                          trControl=trainControl(method="cv",number=10),
+                          method="lm")
+
+modelo_predicho1 <- predict(modelo_estimado1,newdata = Tr_test )
+modelo_predicho2 <- predict(modelo_estimado2,newdata = Tr_test )
+modelo_predicho3 <- predict(modelo_estimado3,newdata = Tr_test )
 
 
-reg1<-lm(modelo1,Tr_train)
-reg2<-lm(modelo2,Tr_train)
-reg3<-lm(modelo3,Tr_train)
 
-stargazer(reg1,type="text")
-stargazer(reg2,type="text")
-stargazer(reg3,type="text")
+#Cálculo del MSE:
+MSE_modelo1 <- with (Tr_test,mean((price - modelo_predicho1)^2))
+MSE_modelo2 <- with (Tr_test,mean((price - modelo_predicho2)^2))
+MSE_modelo3 <- with (Tr_test,mean((price - modelo_predicho3)^2))
+
+MSE_modelo1
+MSE_modelo2
+MSE_modelo3
+
+#Guardar los resultados en la base de Test
+Tr_test$y1 <- modelo_predicho1
+Tr_test$y2 <- modelo_predicho2
+Tr_test$y3 <- modelo_predicho3
+
+#Determinar si es pobre o no
+
+Tr_test$compra_clas_ing1 <- factor(if_else( Tr_test$y1 > Tr_test$price, "Compra", "No_compra"))
+Tr_test$compra_clas_ing2 <- factor(if_else( Tr_test$y2 > Tr_test$price, "Compra", "No_compra"))
+Tr_test$compra_clas_ing3 <- factor(if_else( Tr_test$y3 > Tr_test$price, "Compra", "No_compra"))
+
+summary(Tr_test$compra_clas_ing1)
+summary(Tr_test$compra_clas_ing2)
+summary(Tr_test$compra_clas_ing3)
+
+#cm1 <- confusionMatrix(data=Tr_test$pobre_clas_ing1, 
+                       #reference=Tr_test$Pobre , 
+                       #mode="sens_spec" , positive="Pobre")
+
+#cm2 <- confusionMatrix(data=Tr_test$pobre_clas_ing2, 
+                       #=Tr_test$Pobre , 
+                       #mode="sens_spec" , positive="Pobre")
+
+#cm3 <- confusionMatrix(data=Tr_test$pobre_clas_ing3, 
+                       #reference=Tr_test$Pobre , 
+                       #mode="sens_spec" , positive="Pobre")
+
+
 
 
 
