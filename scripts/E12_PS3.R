@@ -576,10 +576,39 @@ modelo3 <- as.formula (price ~ p_upl+rooms+bathrooms+surface_covered)
 
 install.packages("lagsarlmtree")
 library(lagsarlmtree)
+install.packages("spdep")
+library(spdep)
 
-reg1<-lagsarlm(modelo1,Tr_train, listw)
-reg2<-lagsarlm(modelo2,Tr_train)
-reg3<-lagsarlm(modelo3,Tr_train)
+Tr_train_sp <- as(Tr_train, "Spatial")
+
+Tr_train_neib <- dnearneigh(coordinates(Tr_train_sp), 0, 0.1, longlat = TRUE)
+
+listw <- nb2listw(Tr_train_neib, style="W", zero.policy = TRUE)
+
+# Prueba 1, saca error. Empty neighbour sets found.
+
+reg1<-lagsarlm(modelo1,data=Tr_train, listw=listw)
+reg2<-lagsarlm(modelo2,data=Tr_train, listw=listw)
+reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw)
+
+stargazer(reg1,reg2,reg3,type="text")
+
+# Prueba 2, Usando eigen valores. Funciona.
+
+ev <- eigenw(listw)
+W <- as(listw, "CsparseMatrix")
+trMatc <- trW(W, type="mult")
+
+
+reg1<-lagsarlm(modelo1,data=Tr_train, listw=listw,
+               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
+
+reg2<-lagsarlm(modelo2,data=Tr_train, listw=listw,
+               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
+
+reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw,
+               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
+
 
 stargazer(reg1,reg2,reg3,type="text")
 
