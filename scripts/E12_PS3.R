@@ -577,6 +577,10 @@ train_med <- st_join(train_med,barrios_med[,c('CODIGO','NOMBRE')])
 test_med <- st_join(test_med,barrios_med[,c('CODIGO','NOMBRE')])
 
 
+colSums(is.na(train_med))
+colSums(is.na(test_med))
+
+
 
 #Estrato:
 
@@ -609,6 +613,149 @@ test_med <- st_join(test_med,estratos_med[,c('MANZANA','ESTRATO')])
 
 colSums(is.na(train_med))
 colSums(is.na(test_med))
+
+#Corrección por vecinos por los NA
+
+#Crear la base de estratos para la Comuna de El Poblado:
+estratos_med_pobl <- filter(estratos_med,COMUNA==14)
+
+#Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
+test_med_estr_ok <- filter(test_med,!(is.na(test_med$AREAGRALUS)))
+test_med_uso_na <- filter(test_med,is.na(test_med$AREAGRALUS))
+
+nrow(test_med_uso_ok)+nrow(test_med_uso_na)
+nrow(test_med)
+
+#Ejecución del Join con Max Dist = 50m
+start = Sys.time()
+test_med_uso_na <- st_join(test_med_uso_na,usos_med_pobl[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
+                           join = st_nn, k = 1, maxdist = 50, parallel=3)
+end = Sys.time()
+end - start
+
+#Reviso si quedaron NA
+colSums(is.na(test_med_uso_na))
+
+#Guardo en un DataFrame el resultado de la búsqueda de USOS
+#(para evitar correr de nuevo el código, que se demora)
+
+test_med_uso_na_df <- sf_to_df(test_med_uso_na, fill = TRUE, unlist = NULL)
+saveRDS(test_med_uso_na_df,"./stores/Medellín/shpUSOS_NA/USOS_NA.rds")
+
+colSums(is.na(train_med))
+colSums(is.na(test_med))
+
+
+
+
+
+
+# Uso del suelo:
+
+usos_med <- read_sf("./stores/Medellín/shp_UsosSueloUrbano/UsosGnalesSueloUrbano.shp")
+st_crs(usos_med)
+usos_med <- st_transform(usos_med,4326)
+
+usos_med$geom_err <- st_is_valid(usos_med, reason = T)
+nrow(usos_med)
+table(usos_med$geom_err)
+
+25448-25343
+#105 errores en las geometrías
+
+usos_med <- st_make_valid(usos_med)
+
+usos_med$geom_err <- st_is_valid(usos_med, reason = T)
+nrow(usos_med)
+table(usos_med$geom_err)
+
+usos_med <- filter(usos_med,usos_med$geom_err == "Valid Geometry")
+nrow(usos_med)
+#Se elimina la geometría mala
+
+colnames(usos_med)
+train_med <- st_join(train_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
+test_med <- st_join(test_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
+
+colSums(is.na(train_med))
+colSums(is.na(test_med))
+
+
+#Corrección por vecinos por los NA
+
+#Crear la base de usos para la Comuna de El Poblado:
+usos_med_pobl <- st_join(usos_med,catastro_med[,c('COMUNA','NOMBRE')])
+usos_med_pobl <- filter(usos_med_pobl,usos_med_pobl$COMUNA==14)
+
+#Dividir Train entre las que sí encontró Uso y los NA (al final se unen)
+train_med_uso_ok <- filter(train_med,!(is.na(train_med$AREAGRALUS)))
+train_med_uso_na <- filter(train_med,is.na(train_med$AREAGRALUS))
+nrow(train_med_uso_ok)+nrow(train_med_uso_na)
+nrow(train_med)
+
+train_med_uso_na <- train_med_uso_na[,-(29:32)]
+
+
+#Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
+test_med_uso_ok <- filter(test_med,!(is.na(test_med$AREAGRALUS)))
+test_med_uso_na <- filter(test_med,is.na(test_med$AREAGRALUS))
+
+nrow(test_med_uso_ok)+nrow(test_med_uso_na)
+nrow(test_med)
+
+test_med_uso_na <- test_med_uso_na[,-(28:31)]
+
+
+#Ejecución del Join con Max Dist = 50m
+#Para test:
+
+start_test = Sys.time()
+test_med_uso_na <- st_join(test_med_uso_na,usos_med_pobl[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
+                           join = st_nn, k = 1, maxdist = 50, parallel=3)
+end_test = Sys.time()
+end_test - start_test
+
+#Reviso si quedaron NA
+colSums(is.na(test_med_uso_na))
+
+#Guardo en un DataFrame el resultado de la búsqueda de USOS
+#(para evitar correr de nuevo el código, que se demora)
+
+test_med_uso_na_df <- sf_to_df(test_med_uso_na, fill = TRUE, unlist = NULL)
+saveRDS(test_med_uso_na_df,"./stores/Medellín/shpUSOS_NA/USOS_NA.rds")
+
+colSums(is.na(test_med))
+test_med <- rbind(test_med_uso_ok,test_med_uso_na)
+colSums(is.na(test_med))
+
+
+#Ejecución del Join con Max Dist = 50m
+#Para Train:
+
+start_train = Sys.time()
+train_med_uso_na <- st_join(train_med_uso_na,usos_med_pobl[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
+                           join = st_nn, k = 1, maxdist = 50, parallel=3)
+end_train = Sys.time()
+end_train - start_train
+
+#Reviso si quedaron NA
+colSums(is.na(train_med_uso_na))
+
+#Guardo en un DataFrame el resultado de la búsqueda de USOS
+#(para evitar correr de nuevo el código, que se demora)
+
+train_med_uso_na_df <- sf_to_df(train_med_uso_na, fill = TRUE, unlist = NULL)
+saveRDS(train_med_uso_na_df,"./stores/Medellín/shpUSOS_NA/USOS_NA_train.rds")
+
+colSums(is.na(train_med))
+train_med <- rbind(train_med_uso_ok,train_med_uso_na)
+colSums(is.na(train_med))
+
+
+#Revisión luego de imputar el Uso:
+colSums(is.na(train_med))
+colSums(is.na(test_med))
+
 
 
 
@@ -666,72 +813,7 @@ colSums(is.na(test_med))
 
 
 
-# Uso del suelo:
 
-usos_med <- read_sf("./stores/Medellín/shp_UsosSueloUrbano/UsosGnalesSueloUrbano.shp")
-st_crs(usos_med)
-usos_med <- st_transform(usos_med,4326)
-
-colnames(usos_med)
-head(usos_med)
-
-usos_med$geom_err <- st_is_valid(usos_med, reason = T)
-nrow(usos_med)
-table(usos_med$geom_err)
-
-25448-25343
-#105 errores en las geometrías
-
-usos_med <- st_make_valid(usos_med)
-
-usos_med$geom_err <- st_is_valid(usos_med, reason = T)
-nrow(usos_med)
-table(usos_med$geom_err)
-
-usos_med <- filter(usos_med,usos_med$geom_err == "Valid Geometry")
-nrow(usos_med)
-#Se elimina la geometría mala
-
-colnames(usos_med)
-train_med <- st_join(train_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
-
-test_med <- st_join(test_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
-
-
-
-#CÓDIGO QUE FUNCIONA CON LOS VECINOS ----
-
-#Crear la base de usos para la Comuna de El Poblado:
-usos_med_pobl <- st_join(usos_med,catastro_med[,c('COMUNA','NOMBRE')])
-usos_med_pobl <- filter(usos_med_pobl,usos_med_pobl$COMUNA==14)
-
-#Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
-test_med_uso_ok <- filter(test_med,!(is.na(test_med$AREAGRALUS)))
-test_med_uso_na <- filter(test_med,is.na(test_med$AREAGRALUS))
-
-nrow(test_med_uso_ok)+nrow(test_med_uso_na)
-nrow(test_med)
-
-#Ejecución del Join con Max Dist = 50m
-start = Sys.time()
-test_med_uso_na <- st_join(test_med_uso_na,usos_med_pobl[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
-                           join = st_nn, k = 1, maxdist = 50, parallel=3)
-end = Sys.time()
-end - start
-
-#Reviso si quedaron NA
-colSums(is.na(test_med_uso_na))
-
-#Guardo en un DataFrame el resultado de la búsqueda de USOS
-#(para evitar correr de nuevo el código, que se demora)
-
-test_med_uso_na_df <- sf_to_df(test_med_uso_na, fill = TRUE, unlist = NULL)
-saveRDS(test_med_uso_na_df,"./stores/Medellín/shpUSOS_NA/USOS_NA.rds")
-
-
-
-colSums(is.na(train_med))
-colSums(is.na(test_med))
 
 colnames(usos_med_geojson)
 train_med <- st_join(train_med,usos_med_geojson[,c("COD_CAT_USO","COD_SUBCAT_USO","AREAGRALUSO","SUBCATEGORIA")])
