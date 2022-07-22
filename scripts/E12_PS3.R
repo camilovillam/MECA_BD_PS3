@@ -48,7 +48,9 @@ p_load(rio,
        rpart,
        rpart.plot,
        glmnet,
-       xgboost)
+       xgboost,
+       sfheaders,
+       nngeo)
 
 
 
@@ -609,33 +611,6 @@ colSums(is.na(train_med))
 colSums(is.na(test_med))
 
 
-reg1 <- lm(price ~ factor(ESTRATO),
-  data=train_med)
-
-reg2 <- lm(price ~ bedrooms + factor(ESTRATO), 
-           data=train_med)
-
-reg3 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO), 
-           data=train_med)
-
-reg4 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + surface_total, 
-           data=train_med)
-
-reg5 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total, 
-           data=train_med)
-
-
-reg6 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + surface_total + factor(AREAGRALUS), 
-           data=train_med)
-
-reg7 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total + factor(COD_SUBCAT), 
-           data=train_med)
-
-
-stargazer(reg1,reg2,reg3,type="text")
-stargazer(reg4,reg5,type="text")
-stargazer(reg4,reg6,type="text")
-stargazer(reg5,reg7,type="text")
 
 # ggplot()+
 #   geom_sf(data=estratos_med,fill = NA) +
@@ -719,7 +694,40 @@ nrow(usos_med)
 
 colnames(usos_med)
 train_med <- st_join(train_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
+
 test_med <- st_join(test_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
+
+
+
+#CÓDIGO QUE FUNCIONA CON LOS VECINOS ----
+
+#Crear la base de usos para la Comuna de El Poblado:
+usos_med_pobl <- st_join(usos_med,catastro_med[,c('COMUNA','NOMBRE')])
+usos_med_pobl <- filter(usos_med_pobl,usos_med_pobl$COMUNA==14)
+
+#Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
+test_med_uso_ok <- filter(test_med,!(is.na(test_med$AREAGRALUS)))
+test_med_uso_na <- filter(test_med,is.na(test_med$AREAGRALUS))
+
+nrow(test_med_uso_ok)+nrow(test_med_uso_na)
+nrow(test_med)
+
+#Ejecución del Join con Max Dist = 50m
+start = Sys.time()
+test_med_uso_na <- st_join(test_med_uso_na,usos_med_pobl[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
+                           join = st_nn, k = 1, maxdist = 50, parallel=3)
+end = Sys.time()
+end - start
+
+#Reviso si quedaron NA
+colSums(is.na(test_med_uso_na))
+
+#Guardo en un DataFrame el resultado de la búsqueda de USOS
+#(para evitar correr de nuevo el código, que se demora)
+
+test_med_uso_na_df <- sf_to_df(test_med_uso_na, fill = TRUE, unlist = NULL)
+saveRDS(test_med_uso_na_df,"./stores/Medellín/shpUSOS_NA/USOS_NA.rds")
+
 
 
 colSums(is.na(train_med))
@@ -829,11 +837,96 @@ colSums(is.na(test_med))
 
 
 
+###
+#Construcciones:
+
+construc_med <- read_sf("./stores/Medellín/shp_CONSTRUCCION/CONSTRUCCION.shp")
+st_crs(construc_med)
+construc_med <- st_transform(construc_med,4326)
+colnames(construc_med)
+
+construc_med$geom_err <- st_is_valid(construc_med, reason = T)
+nrow(construc_med)
+table(construc_med$geom_err)
+
+1141622-1140783
+#839 errores en las geometrías
+
+construc_med <- st_make_valid(construc_med)
+
+construc_med$geom_err <- st_is_valid(construc_med, reason = T)
+nrow(construc_med)
+table(construc_med$geom_err)
+#Quedan solo 4 errores en las geometrías
+
+construc_med <- filter(construc_med,construc_med$geom_err == "Valid Geometry")
+nrow(construc_med)
+#Se eliminaron las 4 geometrías malas
+
+colnames(construc_med)
+train_med <- st_join(train_med,construc_med[,c('MANZANA','ESTRATO')])
+
+
+test_med <- st_join(test_med,construc_med[,c('CBML','COBAMA','TIPO_CONST',
+                                             'NUMERO_PIS','NUMERO_SOT',
+                                             'ID_CONSTRU','AREA_CONST','ALTURA')],
+                    join = st_nn, k = 1, maxdist = 100)
+
+
+st_join(points, polygons, join = st_nn, k = 1, maxdist = 500)
+
+
+colSums(is.na(train_med))
+colSums(is.na(test_med))
+
+nrow(test_med)
+
+#ENCUENTRA MUY POCAS OBSERVACIONES, NO SIRVE
+
+
+#DOS OPCIONES:
+
+#Intentar arreglar los datos, del por qué de los NA
+#Intentar usar el método de Eduard
+
 
 
 #Algunas conclusiones:
 # CBML puede ser útil para la otra base del número de predios
 # MANZ_MED no es tan útil
+
+
+#REGRESIONES ----
+
+
+reg1 <- lm(price ~ factor(ESTRATO),
+           data=train_med)
+
+reg2 <- lm(price ~ bedrooms + factor(ESTRATO), 
+           data=train_med)
+
+reg3 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO), 
+           data=train_med)
+
+reg4 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + surface_total, 
+           data=train_med)
+
+reg5 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total, 
+           data=train_med)
+
+
+reg6 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + surface_total + factor(AREAGRALUS), 
+           data=train_med)
+
+reg7 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total + factor(COD_SUBCAT), 
+           data=train_med)
+
+
+stargazer(reg1,reg2,reg3,type="text")
+stargazer(reg4,reg5,type="text")
+stargazer(reg4,reg6,type="text")
+stargazer(reg5,reg7,type="text")
+
 
 
 #Observatorio Inmobiliario de Medellín
