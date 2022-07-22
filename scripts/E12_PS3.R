@@ -956,7 +956,7 @@ colSums(is.na(train_med))
 train_med <- rbind(train_med_mzn_ok,train_med_mzn_na)
 colSums(is.na(test_med))
 
-
+nrow(test_med)
 
 #Revisión luego de imputar el Uso:
 colSums(is.na(train_med))
