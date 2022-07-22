@@ -733,7 +733,7 @@ colSums(is.na(test_med))
 #Para Train:
 
 start_train = Sys.time()
-train_med_uso_na <- st_join(train_med_uso_na,usos_med_pobl[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
+train_med_uso_na <- st_join(train_med_uso_na,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
                            join = st_nn, k = 1, maxdist = 50, parallel=3)
 end_train = Sys.time()
 end_train - start_train
@@ -752,6 +752,7 @@ train_med <- rbind(train_med_uso_ok,train_med_uso_na)
 colSums(is.na(train_med))
 
 
+
 #Revisión luego de imputar el Uso:
 colSums(is.na(train_med))
 colSums(is.na(test_med))
@@ -759,14 +760,14 @@ colSums(is.na(test_med))
 
 
 
-# ggplot()+
-#   geom_sf(data=estratos_med,fill = NA) +
-#   theme_bw() +
-#   theme(axis.title =element_blank(),
-#         panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(),
-#         axis.text = element_text(size=6))
-# 
+ggplot()+
+  geom_sf(data=manz_med_pobl,fill = NA) +
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))
+
 
 
 #Lote:
@@ -847,10 +848,6 @@ usos_med_geojson$geometry <- usos_med_geojson$geometry %>%
 
 #ENSAYAR CON MANZANAS DEL DANE
 
-install.packages("nngeo")
-require(nngeo)
-
-
 manz_med <- read_sf("./stores/Medellín/shp_MGNDANE/MGN_URB_MANZANA.shp")
 st_crs(manz_med)
 colnames(manz_med)
@@ -859,17 +856,124 @@ train_med <- st_join(train_med,manz_med[,c('MANZ_CCDGO','MANZ_CCNCT','MANZ_CAG')
 test_med <- st_join(test_med,manz_med[,c('MANZ_CCDGO','MANZ_CCNCT','MANZ_CAG')])
 
 
+#################################
+###MANZANAS DEL DANE:
 
-#Código de EDUARD:
+# Uso del suelo:
 
-test_med  <-  st_join(test_med, manz_med, join = st_nn , maxdist = 50 , k = 1 , progress = FALSE)
-test_mnz
+manz_med <- read_sf("./stores/Medellín/shp_MGNDANE/MGN_URB_MANZANA.shp")
+st_crs(manz_med)
+colnames(manz_med)
+manz_med <- st_transform(manz_med,4326)
+
+manz_med$geom_err <- st_is_valid(manz_med, reason = T)
+nrow(manz_med)
+table(manz_med$geom_err)
+
+25448-25343
+#1 error en la geometría
+
+manz_med <- st_make_valid(manz_med)
+
+manz_med$geom_err <- st_is_valid(manz_med, reason = T)
+nrow(manz_med)
+table(manz_med$geom_err)
+
+manz_med <- filter(manz_med,manz_med$geom_err == "Valid Geometry")
+nrow(manz_med)
+#Se elimina la geometría mala
+
+colnames(manz_med)
+train_med <- st_join(train_med,manz_med[,c("CPOB_CCDGO","MANZ_CCDGO","MANZ_CCNCT","MANZ_CAG")])
+test_med <- st_join(test_med,manz_med[,c("CPOB_CCDGO","MANZ_CCDGO","MANZ_CCNCT","MANZ_CAG")])
+
+colSums(is.na(train_med)) #7440 en TRAIN sin MZN
+colSums(is.na(test_med))  #3114 en TEST sin MZN
+
+
+#Corrección por vecinos por los NA
+
+#Crear la base de usos para la Comuna de El Poblado:
+manz_med_pobl <- st_join(manz_med,catastro_med[,c('COMUNA','NOMBRE')])
+manz_med_pobl <- filter(manz_med_pobl,manz_med_pobl$COMUNA==14)
+
+leaflet() %>% addTiles() %>% addPolygons(data=manz_med_pobl)  
+
+#Dividir Train entre las que sí encontró Uso y los NA (al final se unen)
+train_med_mzn_ok <- filter(train_med,!(is.na(train_med$MANZ_CCDGO)))
+train_med_mzn_na <- filter(train_med,is.na(train_med$MANZ_CCDGO))
+nrow(train_med_mzn_ok)+nrow(train_med_mzn_na)
+nrow(train_med)
+
+colnames(train_med_mzn_na)
+train_med_mzn_na <- train_med_mzn_na[,-(33:36)]
+
+
+#Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
+test_med_mzn_ok <- filter(test_med,!(is.na(test_med$MANZ_CCDGO)))
+test_med_mzn_na <- filter(test_med,is.na(test_med$MANZ_CCDGO))
+nrow(test_med_mzn_ok)+nrow(test_med_mzn_na)
+nrow(test_med)
+
+colnames(test_med_mzn_na)
+test_med_mzn_na <- test_med_mzn_na[,-(32:35)]
+
+
+#Ejecución del Join con Max Dist = 50m
+
+#Para test:
+
+start_test = Sys.time()
+test_med_mzn_na <- st_join(test_med_mzn_na,manz_med_pobl[,c("CPOB_CCDGO","MANZ_CCDGO","MANZ_CCNCT","MANZ_CAG")],
+                           join = st_nn, k = 1, maxdist = 50, parallel=3)
+end_test = Sys.time()
+end_test - start_test
+
+colSums(is.na(test_med_mzn_na))
+
+test_med_mzn_na_df <- sf_to_df(test_med_mzn_na, fill = TRUE, unlist = NULL)
+saveRDS(test_med_mzn_na_df,"./stores/Medellín/MZN_test_NA.rds")
+
+colSums(is.na(test_med))
+test_med <- rbind(test_med_mzn_ok,test_med_mzn_na)
+colSums(is.na(test_med))
+
+
+#Para train:
+
+start_train = Sys.time()
+train_med_mzn_na <- st_join(train_med_mzn_na,manz_med[,c("CPOB_CCDGO","MANZ_CCDGO","MANZ_CCNCT","MANZ_CAG")],
+                           join = st_nn, k = 1, maxdist = 50, parallel=3)
+end_train = Sys.time()
+end_train - start_train
+
+colSums(is.na(train_med_mzn_na))
+
+train_med_mzn_na_df <- sf_to_df(train_med_mzn_na, fill = TRUE, unlist = NULL)
+saveRDS(train_med_mzn_na_df,"./stores/Medellín/MZN_train_NA.rds")
+
+colSums(is.na(train_med))
+train_med <- rbind(train_med_mzn_ok,train_med_mzn_na)
+colSums(is.na(test_med))
+
+
+
+#Revisión luego de imputar el Uso:
+colSums(is.na(train_med))
+colSums(is.na(test_med))
 
 
 
 
 
 
+
+
+
+
+
+
+###############################
 nrow(test_med)
 
 train_med_b  <- filter(train_med,!(is.na(train_med$CBML)))
@@ -997,17 +1101,18 @@ reg5 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + s
            data=train_med)
 
 
-reg6 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + surface_total + factor(AREAGRALUS), 
+reg7 <- lm(price ~ bedrooms + ESTRATO + COD_CAT_US + COD_SUBCAT, 
            data=train_med)
-
+ 
 reg7 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total + factor(COD_SUBCAT), 
            data=train_med)
 
+stargazer(reg6,type="text")
 
 stargazer(reg1,reg2,reg3,type="text")
 stargazer(reg4,reg5,type="text")
 stargazer(reg4,reg6,type="text")
-stargazer(reg5,reg7,type="text")
+stargazer(reg6,reg7,type="text")
 
 
 
@@ -1049,6 +1154,55 @@ metromed_sf
 metromed_station  <-  metromed_sf$osm_points
 
 leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
+
+
+#PARA QUÉ QUIEREN ENCONTRAR LAS MANZANAS?
+#QUÉ INFO TIENEN MANZANAS DEL DANE?
+#MED: USO DEL SUELO, ...
+#MED: ÍNDICE DE INSEGURIDAD
+#DISTANCIA A FEATURES: PARQUES, CENTRO COMERCIALES, HOSPITALES, ESTACIONES METRO
+
+
+
+
+#Árbol MED:
+
+###Modelo árbol básico (CART) ----
+
+train_med_fact <- train_med 
+train_med_fact$ESTRATO <- factor(train_med_fact$ESTRATO)
+train_med_fact$COD_CAT_US <- factor(train_med_fact$COD_CAT_US)
+train_med_fact$COD_SUBCAT <- factor(train_med_fact$COD_SUBCAT)
+
+
+form_tree <- as.formula("price ~ bedrooms + ESTRATO + COD_CAT_US + COD_SUBCAT")
+
+
+#cp_alpha<-seq(from = 0, to = 0.1, length = 10)
+
+#Ensayo de tree con un control de internet:
+
+cvCtrl <- trainControl(method="repeatedcv", repeats = 2, classProbs = TRUE)
+
+tree <- train(
+  form_tree,
+  data = train_med_fact,
+  method = "rpart",
+  trControl = cvCtrl,
+  na.action  = na.pass,
+  parms=list(split='Gini'),
+  controls=ctree_control(maxsurrogate=2),
+  #tuneGrid = expand.grid(cp = cp alpha)#,
+  tuneLength=200
+  #preProcess = c("center", "scale")
+)
+
+tree
+rpart.plot::prp(tree$finalModel)
+pred_tree <- predict(tree,Tr_test)
+c_matr_tree <- confusionMatrix(Tr_test$Pobre,pred_tree,positive="Pobre")
+c_matr_tree
+
 
 
 
