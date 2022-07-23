@@ -476,6 +476,7 @@ metro_bog <-read_sf("./stores/Bogota/estacionesMetro/ESTACIONES.shp") # Subir la
 mz_bog <-read_sf("./stores/Bogota/manz/MANZ.shp") # Subir las manzanas de Bogotá D.C.
 avaluo_bog <-read_sf("./stores/Bogota/avaluo_manzana/Avaluo_Manzana.shp") # Subir el avaluo de las manzanas de Bogotá D.C.
 estrato_bog <-read_sf("./stores/Bogota/manzanaestratificacion/ManzanaEstratificacion.shp") # Subir el avaluo de las manzanas de Bogotá D.C.
+Dane_mz_bog <-read_sf("./stores/Bogota/DANE/MGN_URB_MANZANA.shp")
 
 #Transformar todos los sistemas de coordenadas a 4326
 loc_bog    <-st_transform(loc_bog, 4326)
@@ -491,6 +492,7 @@ metro_bog  <-st_transform(metro_bog, 4326)
 mz_bog     <-st_transform(mz_bog, 4326)
 avaluo_bog <-st_transform(avaluo_bog, 4326)
 estrato_bog <-st_transform(estrato_bog, 4326)
+Dane_mz_bog <-st_transform(Dane_mz_bog, 4326)
 
 #Primera prueba gráfica
 ggplot()+
@@ -513,10 +515,16 @@ train_bog <- st_join(train_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
 train_bog <- st_join(train_bog,seg_bog[,c('t_puntos','p_upl')])
 train_bog <- st_join(train_bog,sector_bog[,c('SCANOMBRE')])
 train_bog <- st_join(train_bog,estrato_bog[,c('ESTRATO')])
+train_bog <- st_join(train_bog,Dane_mz_bog[,c('MANZ_CAG')])
+
+summary(train_bog$MANZ_CAG)
 
 sf_use_s2(FALSE)
 train_bog <- st_join(train_bog,mz_bog[,c('MANCODIGO','SECCODIGO')])
 train_bog <- st_join(train_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM','AVALUO_CAT')])
+
+skim(train_bog)
+
 
 #Primera prueba join para test
 test_bog <- st_join(test_bog,loc_bog[,c('LocCodigo','LocNombre')])
@@ -532,7 +540,32 @@ test_bog <- st_join(test_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM
 skim(train_bog)
 skim(test_bog)
 
-#leaflet() %>% addTiles() %>%addPolygons(data=mz_bog)
+##Prueba vecinos ----
+
+#Para train:
+
+estrato_bog <- estrato_bog %>% filter(!st_is_empty(.))
+
+#Dividir Train entre las que sí encontró manzana y los NA (al final se unen)
+train_bog_mz_ok <- filter(train_bog,!(is.na(train_bog$MANCODIGO)))
+train_bog_mz_na <- filter(train_bog,is.na(train_bog$MANCODIGO))
+
+install.packages("nngeo")
+library(nngeo)
+start_train = Sys.time()
+train_bog_mz_na <- st_join(train_bog_mz_na,mz_bog[,c('MANCODIGO')],
+                             join = st_nn, k = 1, maxdist = 50, parallel=8)
+end_train = Sys.time()
+end_train - start_train
+
+colSums(is.na(train_bog_mz_na))
+
+install.packages("sfheaders")
+library(sfheaders)
+
+train_bog_mz_na_df <- sf_to_df(train_bog_mz_na, fill = TRUE, unlist = NULL)
+saveRDS(train_bog_mz_na_df,"./stores/Bogota/rds_calculados/MZ_train_NA.rds")
+
 
 ##5.2. Prueba base solo para chapinero ----
 
