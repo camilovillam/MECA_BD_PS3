@@ -243,7 +243,45 @@ test_bog <-subset(test_prop,test_prop$l3 =="Bogotá D.C")
 
 ##3.1. Variables de texto----
 
+#Se cargan las bases de datos
+
+setwd("/Users/jorgeeduardogarcia/Desktop/BIG_DATA/datos_ps3")
+train_prop <- readRDS("~/Desktop/BIG_DATA/datos_ps3/dataPS3/train.Rds")
+test_prop <- readRDS("~/Desktop/BIG_DATA/datos_ps3/dataPS3/test.Rds")
+
+##Se cargan las librerías con la función P_load
+
+install.packages("pacman")
+
+require("pacman")
+p_load(tidyverse,rio,
+       sf, 
+       leaflet,
+       tmaptools, 
+       osmdata) 
+
+#Ahora se observa la base de datos
+View(train_prop)
+table(train_prop$l3)
+
+#Se obeservan los NA's de la superficie total y del área cubierta, pues son variables de interés en el precio de la vivienda
+table(is.na(train_prop$surface_total)) # en el área total hay 79845 na's
+table(is.na(train_prop$surface_covered)) # en la superficie cubierta hay 87368 na's
+
+#Sin embargo, al momento de revisar la variable "descripción" se evidencia que el texto puede corroborar la información faltante reportada como na
+##´Demostración con área total de la vivienda
+attach(train_prop)
+description
+
+#Se crea una sola variable que contiene la latitud y la longitud
+train_prop_sf = train_prop %>% st_as_sf(coords=c("lon", "lat"),crs=4326)
+
+
+
+
 ##3.2. Imputación de datos----
+
+
 
 ##3.3. Definición bases datos definitivas ----
 
