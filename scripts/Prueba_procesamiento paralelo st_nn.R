@@ -17,7 +17,7 @@ water = st_transform(water, 32636)
 
 # Large example - Polygons
 set.seed(1)
-n = 10000
+n = 500
 x = data.frame(
   lon = (runif(n) * 2 - 1) * 70,
   lat = (runif(n) * 2 - 1) * 70

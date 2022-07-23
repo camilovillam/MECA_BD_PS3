@@ -614,7 +614,7 @@ nrow(train_med_estr_ok)+nrow(train_med_estr_na)
 nrow(train_med)
 
 colnames(train_med_estr_na)
-train_med_estr_na <- train_med_estr_na[,-(25:26)] #OJO, ELIMINAR COLUMNAS CORRECTAS
+train_med_estr_na <- train_med_estr_na[,-(27:28)] #OJO, ELIMINAR COLUMNAS CORRECTAS
 
 
 
@@ -626,15 +626,18 @@ nrow(test_med_estr_ok)+nrow(test_med_estr_na)
 nrow(test_med)
 
 colnames(test_med_estr_na)
-test_med_estr_na <- test_med_estr_na[,-(29:32)] #OJO, ELIMINAR COLUMNAS CORRECTAS
+test_med_estr_na <- test_med_estr_na[,-(26:27)] #OJO, ELIMINAR COLUMNAS CORRECTAS
 
 #Ejecución del Join con Max Dist = 50m
 
 #Para test:
 
+#Remover geometrías vacías:
+estr_med_pobl <- estr_med_pobl %>% filter(!st_is_empty(.))
+
 start_test = Sys.time()
 test_med_estr_na <- st_join(test_med_estr_na,estr_med_pobl[,c('MANZANA','ESTRATO')],
-                           join = st_nn, k = 1, maxdist = 50, parallel=3)
+                           join = st_nn, k = 1, maxdist = 50, parallel=8)
 end_test = Sys.time()
 end_test - start_test
 
@@ -650,9 +653,11 @@ colSums(is.na(test_med))
 
 #Para train:
 
+estratos_med <- estratos_med %>% filter(!st_is_empty(.))
+
 start_train = Sys.time()
 train_med_estr_na <- st_join(train_med_estr_na,estratos_med[,c('MANZANA','ESTRATO')],
-                            join = st_nn, k = 1, maxdist = 50, parallel=3)
+                            join = st_nn, k = 1, maxdist = 50, parallel=8)
 end_train = Sys.time()
 end_train - start_train
 
@@ -670,6 +675,7 @@ nrow(test_med)
 #Revisión luego de imputar el Uso:
 colSums(is.na(train_med))
 colSums(is.na(test_med))
+
 
 
 
