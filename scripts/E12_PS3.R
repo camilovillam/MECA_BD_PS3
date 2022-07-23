@@ -516,15 +516,6 @@ leaflet() %>% addTiles() %>% addPolygons(data=El_Poblado)
 
 
 
-#Información estratos, lotes, predios Medellín
-
-predios_med <- import("./stores/Medellín/informacion_predios.csv")
-lotes_med <- import("./stores/Medellín/informacion_lotes.csv")
-usos_med_geojson <- read_sf("./stores/Medellín/UsosGnalesSueloUrbano.geojson")
-
-
-
-
 
 #Todos los barrios de Medellín
 leaflet() %>% addTiles() %>% addPolygons(data=barrios_med,label=barrios_med$NOMBRE)
@@ -576,11 +567,17 @@ st_crs(estratos_med)
 estratos_med <- st_transform(estratos_med,4326)
 colnames(estratos_med)
 
+
+#Remover 346 polígonos que tienen estrato pero no manzana (calles)
+colSums(is.na(estratos_med))
+estratos_med <- estratos_med %>% filter(!is.na(estratos_med$MANZANA))
+colSums(is.na(estratos_med))
+
 estratos_med$geom_err <- st_is_valid(estratos_med, reason = T)
 nrow(estratos_med)
 table(estratos_med$geom_err)
 
-31972-31671
+31618-31618
 #301 errores en las geometrías
 
 estratos_med <- st_make_valid(estratos_med)
@@ -593,6 +590,10 @@ table(estratos_med$geom_err)
 estratos_med <- filter(estratos_med,estratos_med$geom_err == "Valid Geometry")
 nrow(estratos_med)
 #Se eliminaron las 4 geometrías malas
+
+#Remover geometrías vacías:
+table(st_is_empty(estratos_med))
+estratos_med <- estratos_med %>% filter(!st_is_empty(.))
 
 
 train_med <- st_join(train_med,estratos_med[,c('MANZANA','ESTRATO')])
@@ -613,9 +614,8 @@ train_med_estr_na <- filter(train_med,is.na(train_med$MANZANA))
 nrow(train_med_estr_ok)+nrow(train_med_estr_na)
 nrow(train_med)
 
-colnames(train_med_estr_na)
-train_med_estr_na <- train_med_estr_na[,-(27:28)] #OJO, ELIMINAR COLUMNAS CORRECTAS
-
+train_med_estr_na$MANZANA <- NULL
+train_med_estr_na$ESTRATO <- NULL
 
 
 #Dividir Test entre las que sí encontró estrato/manzana y los NA (al final se unen)
@@ -625,15 +625,12 @@ test_med_estr_na <- filter(test_med,is.na(test_med$MANZANA))
 nrow(test_med_estr_ok)+nrow(test_med_estr_na)
 nrow(test_med)
 
-colnames(test_med_estr_na)
-test_med_estr_na <- test_med_estr_na[,-(26:27)] #OJO, ELIMINAR COLUMNAS CORRECTAS
+test_med_estr_na$MANZANA <- NULL
+test_med_estr_na$ESTRATO <- NULL
 
 #Ejecución del Join con Max Dist = 50m
 
 #Para test:
-
-#Remover geometrías vacías:
-estr_med_pobl <- estr_med_pobl %>% filter(!st_is_empty(.))
 
 start_test = Sys.time()
 test_med_estr_na <- st_join(test_med_estr_na,estr_med_pobl[,c('MANZANA','ESTRATO')],
@@ -653,8 +650,6 @@ colSums(is.na(test_med))
 
 #Para train:
 
-estratos_med <- estratos_med %>% filter(!st_is_empty(.))
-
 start_train = Sys.time()
 train_med_estr_na <- st_join(train_med_estr_na,estratos_med[,c('MANZANA','ESTRATO')],
                             join = st_nn, k = 1, maxdist = 50, parallel=8)
@@ -668,15 +663,23 @@ saveRDS(train_med_estr_na_df,"./stores/Medellín/rds_calculados/ESTRATO_train_NA
 
 colSums(is.na(train_med))
 train_med <- rbind(train_med_estr_ok,train_med_estr_na)
-colSums(is.na(test_med))
+colSums(is.na(train_med))
 
-nrow(test_med)
+nrow(train_med)
 
 #Revisión luego de imputar el Uso:
 colSums(is.na(train_med))
 colSums(is.na(test_med))
 
+#En test quedan dos observaciones sin estrato y sin manzana.
+#Se revisan y son dos observaciones "basura", erróneas en Test.
 
+# 89162e83a15bd128e9834fc2
+# 4133ae5fc32d14793a9968d2
+
+leaflet() %>% addTiles() %>% 
+  addCircleMarkers(data=test_med %>% filter(is.na(test_med$MANZANA)),
+                   color="red",label=test_med$ESTRATO)
 
 
 #### Uso del suelo: ----
@@ -723,9 +726,11 @@ train_med_uso_na <- filter(train_med,is.na(train_med$AREAGRALUS))
 nrow(train_med_uso_ok)+nrow(train_med_uso_na)
 nrow(train_med)
 
-colnames(train_med_uso_na)
-train_med_uso_na <- train_med_uso_na[,-(29:32)]  #OJO, ELIMINAR COLUMNAS CORRECTAS
-
+#Elimino las columnas con NA para poder hacer un nuevo Join
+train_med_uso_na$COD_CAT_US <- NULL
+train_med_uso_na$COD_SUBCAT <- NULL
+train_med_uso_na$AREAGRALUS <- NULL
+train_med_uso_na$SUBCATEGOR <- NULL
 
 #Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
 test_med_uso_ok <- filter(test_med,!(is.na(test_med$AREAGRALUS)))
@@ -734,8 +739,11 @@ test_med_uso_na <- filter(test_med,is.na(test_med$AREAGRALUS))
 nrow(test_med_uso_ok)+nrow(test_med_uso_na)
 nrow(test_med)
 
-colnames(test_med_uso_na)
-test_med_uso_na <- test_med_uso_na[,-(28:31)]  #OJO, ELIMINAR COLUMNAS CORRECTAS
+#Elimino las columnas con NA para poder hacer un nuevo Join
+test_med_uso_na$COD_CAT_US <- NULL
+test_med_uso_na$COD_SUBCAT <- NULL
+test_med_uso_na$AREAGRALUS <- NULL
+test_med_uso_na$SUBCATEGOR <- NULL
 
 
 #Ejecución del Join con Max Dist = 50m
@@ -751,8 +759,6 @@ end_test - start_test
 colSums(is.na(test_med_uso_na))
 
 #Guardo en un DataFrame el resultado de la búsqueda de USOS
-#(para evitar correr de nuevo el código, que se demora)
-
 test_med_uso_na_df <- sf_to_df(test_med_uso_na, fill = TRUE, unlist = NULL)
 saveRDS(test_med_uso_na_df,"./stores/Medellín/rds_calculados/USOS_NA_test.rds")
 
@@ -846,8 +852,11 @@ train_med_mzn_na <- filter(train_med,is.na(train_med$MANZ_CCDGO))
 nrow(train_med_mzn_ok)+nrow(train_med_mzn_na)
 nrow(train_med)
 
-colnames(train_med_mzn_na)
-train_med_mzn_na <- train_med_mzn_na[,-(33:36)]  #OJO, ELIMINAR COLUMNAS CORRECTAS
+#Elimino las columnas con NA para hacer un nuevo join
+train_med_mzn_na$CPOB_CCDGO <- NULL
+train_med_mzn_na$MANZ_CCDGO <- NULL
+train_med_mzn_na$MANZ_CCNCT <- NULL
+train_med_mzn_na$MANZ_CAG <- NULL
 
 
 #Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
@@ -859,6 +868,12 @@ nrow(test_med)
 
 colnames(test_med_mzn_na)
 test_med_mzn_na <- test_med_mzn_na[,-(32:35)]  #OJO, ELIMINAR COLUMNAS CORRECTAS
+
+#Elimino las columnas con NA para hacer un nuevo join
+test_med_mzn_na$CPOB_CCDGO <- NULL
+test_med_mzn_na$MANZ_CCDGO <- NULL
+test_med_mzn_na$MANZ_CCNCT <- NULL
+test_med_mzn_na$MANZ_CAG <- NULL
 
 
 #Ejecución del Join con Max Dist = 50m
@@ -906,10 +921,214 @@ colSums(is.na(test_med))
 
 
 
+### FEATURES DE OSM: ----
+
+#Estaciones de metro en Medellín: ----
+
+## objeto osm
+metromed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
+  add_osm_feature(key="public_transport" , value="station") 
+
+metromed_sf <- metromed %>% osmdata_sf()
+metromed_sf
+metromed_station  <-  metromed_sf$osm_points
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
+
+## Distancia de las viviendas a Estación metro
+dist_metro_test  <-  st_distance(x=test_med, y=metromed_station)
+dist_metro_train  <-  st_distance(x=train_med, y=metromed_station)
+
+## Distancia mínima
+min_dist_metro_test  <-  apply(dist_metro_test,1,min)
+min_dist_metro_train  <-  apply(dist_metro_train,1,min)
+
+test_med$dist_metro <- min_dist_metro_test
+train_med$dist_metro <- min_dist_metro_train
+
+
+#Hospitales y clínicas en Medellín: ----
+
+## objeto osm
+hospmed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
+  add_osm_feature(key="amenity" , value="hospital")
+
+clinmed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
+  add_osm_feature(key="amenity" , value="clinic") 
+
+hospmed_sf <- hospmed %>% osmdata_sf()
+clinmed_sf <- clinmed %>% osmdata_sf()
+
+hospmed_sf
+clinmed_sf
+
+hosp_med  <-  hospmed_sf$osm_points
+clin_med  <-  clinmed_sf$osm_points
+
+colnames(hosp_med)
+colnames(clin_med)
+compare_df_cols(hosp_med, clin_med)
+
+nrow(hosp_med)
+nrow(clin_med)
+nrow(hosp_med) + nrow(clin_med)
+
+#Se unen las filas por columnas comunes de clínicas y hospitales
+hosp_med <- rbind(hosp_med[intersect(colnames(hosp_med), colnames(clin_med))],
+             clin_med[intersect(colnames(hosp_med), colnames(clin_med))])
+
+nrow(hosp_med)
+colnames(hosp_med)
+
+leaflet() %>% addTiles() %>% 
+  addCircleMarkers(data=hosp_med,color="blue")
+
+## Distancia de las viviendas a clínicas u hospitales
+dist_hospm_test  <-  st_distance(x=test_med, y=hosp_med)
+dist_hospm_train  <-  st_distance(x=train_med, y=hosp_med)
+
+## Distancia mínima
+min_dist_hospm_test  <-  apply(dist_hospm_test,1,min)
+min_dist_hospm_train  <-  apply(dist_hospm_train,1,min)
+
+test_med$dist_hosp <- min_dist_hospm_test
+train_med$dist_hosp <- min_dist_hospm_train
+
+
+#Centros comerciales en Medellín: ----
+
+## objeto osm
+ccommed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
+  add_osm_feature(key="shop" , value="mall") 
+
+ccommed_sf <- ccommed %>% osmdata_sf()
+ccomerc_med  <-  ccommed_sf$osm_points
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=ccomerc_med)
+
+## Distancia de las viviendas a Centros comerciales
+dist_ccomercm_test  <-  st_distance(x=test_med, y=ccomerc_med)
+dist_ccomercm_train  <-  st_distance(x=train_med, y=ccomerc_med)
+
+## Distancia mínima
+min_dist_ccomercm_test  <-  apply(dist_ccomercm_test,1,min)
+min_dist_ccomercm_train  <-  apply(dist_ccomercm_train,1,min)
+
+test_med$dist_ccomerc <- min_dist_ccomercm_test
+train_med$dist_ccomerc <- min_dist_ccomercm_train
+
+
+#Parques en Medellín: ----
+
+## objeto osm
+parkmed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
+  add_osm_feature(key="leisure" , value="park")
+
+parkmed_sf <- parkmed %>% osmdata_sf()
+park_med  <-  parkmed_sf$osm_points
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=park_med)
+
+## Distancia de las viviendas a parques
+dist_parkm_test  <-  st_distance(x=test_med, y=park_med)
+dist_parkm_train  <-  st_distance(x=train_med, y=park_med)
+
+## Distancia mínima
+min_dist_parkm_test  <-  apply(dist_parkm_test,1,min)
+min_dist_parkm_train  <-  apply(dist_parkm_train,1,min)
+
+test_med$dist_park <- min_dist_parkm_test
+train_med$dist_park <- min_dist_parkm_train
+
+
+
+#### PENDIENTE: Información de Predios Medellín ----
+
+#Puede contener valor promedio de m2, explorar
+
+predios_med <- import("./stores/Medellín/informacion_predios.csv")
+colnames(predios_med)
+
+#Explorar diccionario.
+#Pensar en cómo promediar o ponderar Avalúo por manzana.
+#Intentar un Join con la base de datoss
+#Revisar también No propietarios
+
+#Combinar con la parte de datos de Construcción? Ej. área, propietarios?
+#O de estadísticas por manzana.
+
+
+### PENDIENTE (EXPERIMENTAL) OBSERVATORIO INMOBILIARIO DE MEDELLÍN ----
+
+
+#Observatorio Inmobiliario de Medellín
+
+
+#Explorar los archivos KML
+st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml")
+st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml")
+st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml")
+st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml")
+st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml")
+
+
+OIME_2022_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml",layer="Apartamentos")
+OIME_2021 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="APARTAMENTOS USADOS.xlsx")
+OIME_2020 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml")
+OIME_2019 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml",layer="APARTAMENTOS.xlsx")
+OIME_2018 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml")
+
+
+leaflet() %>% addTiles() %>% 
+  addCircleMarkers(data=OIME_2022,popup = OIME_2022$Description, color ="green") %>% 
+  addCircleMarkers(data=OIME_2021,popup = OIME_2021$Description, color ="red") %>% 
+  addCircleMarkers(data=OIME_2020,popup = OIME_2020$Description, color ="blue") %>% 
+  addCircleMarkers(data=OIME_2019,popup = OIME_2019$Description, color ="orange")%>%
+  addCircleMarkers(data=OIME_2018,popup = OIME_2018$Description, color ="black")
+
+
 
 
 
 ## 6.3. REGRESIONES ----
+
+### PARTIR LAS BASES DE DATOS: TRAIN, EVAL, TEST.
+
+##4.1. Partición de la base de datos en tres----
+
+#La base de datos Train se divide en tres particiones:
+# Tr_train: Entrenar el modelo
+# Tr_eval: Evaluar, ajustar y refinar el modelo
+# Tr_test: Probar el modelo
+
+#Balance inicial
+prop.table(table(train_h$Pobre))
+
+### Generación de particiones ----
+set.seed(100)
+split1 <- createDataPartition(train_h$Pobre, p = .7)[[1]]
+length(split1)
+
+other <- train_h[-split1,]
+Tr_train <- train_h[split1,]
+
+split2 <- createDataPartition(other$Pobre, p = 1/3)[[1]]
+
+Tr_eval <- other[ split2,]
+Tr_test <- other[-split2,]
+
+
+### Balance final ----
+prop.table(table(train_h$Pobre))
+prop.table(table(Tr_train$Pobre))
+prop.table(table(Tr_eval$Pobre))
+prop.table(table(Tr_test$Pobre))
+
+nrow(Tr_train)
+nrow(Tr_test)
+
+rm(other)
+
 
 
 ### Modelos básicos ----
@@ -942,55 +1161,6 @@ stargazer(reg1,reg2,reg3,type="text")
 stargazer(reg4,reg5,type="text")
 stargazer(reg4,reg6,type="text")
 stargazer(reg6,reg7,type="text")
-
-
-
-#Observatorio Inmobiliario de Medellín
-
-
-#Explorar los archivos KML
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml")
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml")
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml")
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml")
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml")
-
-
-OIME_2022_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml",layer="Apartamentos")
-OIME_2021 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="APARTAMENTOS USADOS.xlsx")
-OIME_2020 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml")
-OIME_2019 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml",layer="APARTAMENTOS.xlsx")
-OIME_2018 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml")
-
-
-leaflet() %>% addTiles() %>% 
-  addCircleMarkers(data=OIME_2022,popup = OIME_2022$Description, color ="green") %>% 
-  addCircleMarkers(data=OIME_2021,popup = OIME_2021$Description, color ="red") %>% 
-  addCircleMarkers(data=OIME_2020,popup = OIME_2020$Description, color ="blue") %>% 
-  addCircleMarkers(data=OIME_2019,popup = OIME_2019$Description, color ="orange")%>%
-  addCircleMarkers(data=OIME_2018,popup = OIME_2018$Description, color ="black")
-
-
-
-#Estaciones de metro en Medellín:
-
-## objeto osm
-metromed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
-  add_osm_feature(key="public_transport" , value="station") 
-
-metromed_sf <- metromed %>% osmdata_sf()
-metromed_sf
-metromed_station  <-  metromed_sf$osm_points
-
-leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
-
-
-#PARA QUÉ QUIEREN ENCONTRAR LAS MANZANAS?
-#QUÉ INFO TIENEN MANZANAS DEL DANE?
-#MED: USO DEL SUELO, ...
-#MED: ÍNDICE DE INSEGURIDAD
-#DISTANCIA A FEATURES: PARQUES, CENTRO COMERCIALES, HOSPITALES, ESTACIONES METRO
-
 
 
 
@@ -1031,18 +1201,6 @@ rpart.plot::prp(tree$finalModel)
 pred_tree <- predict(tree,Tr_test)
 c_matr_tree <- confusionMatrix(Tr_test$Pobre,pred_tree,positive="Pobre")
 c_matr_tree
-
-
-
-
-
-
-
-
-
-skim(test_med)
-
-#Intersecciones, cruces, identificar manzana que se cruza con un punto
 
 
 
