@@ -259,7 +259,11 @@ p_load(tidyverse,rio,
        leaflet,
        tmaptools, 
        osmdata, 
-       skim) 
+       skim,
+       class)
+install.packages("class")
+require("class")
+
 
 #Ahora se observa la base de datos
 View(train_prop)
@@ -283,14 +287,33 @@ train_prop_sf = train_prop %>% st_as_sf(coords=c("lon", "lat"),crs=4326)
 class(train_prop_sf)
 
 #Plot mapas
-leaflet() %>% addTiles() %>% addCircles(data=train_prop)
+leaflet() %>% addTiles() %>% addCircles(data=train_prop_sf)
 
 
 ##Ahora se va a extraer datos del texto
 
+
+#Antes de crear el patrón, se cambian todas las letras d ela variable descripción de mayúsucla a minúscula
+attach(train_prop_sf)
+train_prop_sf$description <- str_to_lower(description)
+train_prop_sf
+
+##Ahora se transforman las unidades de medidas, cambiándolas todas a mt2
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "metros cuadrados" , 
+                                            replacement = "mt2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "mts" , 
+                                            replacement = "mt2")
+
 #Se crea un patrón para extraer el área medida en metro cuadrado de la vivienda, de la variable descripción
 
-x = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+M2" ## pattrón
+x = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts" ## patrón
+
+
+str_locate_all(string = train_prop$description[28] , pattern = x) ## detectar patrón
+
+str_extract(string=train_prop$description[28] , pattern= x) ## extrac pattern
+
 ##3.2. Imputación de datos----
 
 
