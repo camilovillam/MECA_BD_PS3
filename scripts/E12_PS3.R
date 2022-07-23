@@ -1023,76 +1023,98 @@ test_med <- import("./stores/Medellín/train_med.rds")
 
 #Archivos del Observatorio Inmobiliario de Medellín:
 #Fuente: 
-
-#Explorar los archivos KML
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml")
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml")
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml")
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml")
-st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml")
-
-
-OIME_2022_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml",layer="Apartamentos")
-OIME_2022_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml",layer="Casas")
-OIME_2021_apts_us <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="APARTAMENTOS USADOS.xlsx")
-OIME_2021_apts_nuev <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="APARTAMENTOS NUEVOS.xlsx")
-OIME_2021_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="CASAS.xlsx")
-OIME_2020_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml", layer="APARTAMENTOS.xlsx")
-OIME_2020_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml", layer="CASAS.xlsx")
-OIME_2019_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml",layer="APARTAMENTOS.xlsx")
-OIME_2019_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml",layer="CASAS.xlsx")
-OIME_2018_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml", layer="APARTAMENTOS.xlsx")
-OIME_2018_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml", layer="CASAS.xlsx")
-
-OIME_2022_apts$YEAR <- 2022
-OIME_2022_casas$YEAR <- 2022
-OIME_2021_apts_us$YEAR <- 2021
-OIME_2021_apts_nuev$YEAR <- 2021
-OIME_2021_casas$YEAR <- 2021
-OIME_2020_apts$YEAR <- 2020
-OIME_2020_casas$YEAR <- 2020
-OIME_2019_apts$YEAR <- 2019
-OIME_2019_casas$YEAR <- 2019
-OIME_2018_apts$YEAR <- 2018
-OIME_2018_casas$YEAR <- 2018
-
-
-OIME <- rbind(
-  OIME_2022_apts,
-  OIME_2022_casas,
-  OIME_2021_apts_us,
-  OIME_2021_apts_nuev,
-  OIME_2021_casas,
-  OIME_2020_apts,
-  OIME_2020_casas,
-  OIME_2019_apts,
-  OIME_2019_casas,
-  OIME_2018_apts,
-  OIME_2018_casas)
-
-leaflet() %>% addTiles() %>% 
-  addCircleMarkers(data=OIME,popup = OIME$Description, color ="green")
-
-
-OIME <- st_join(OIME,estratos_med[,c('MANZANA','ESTRATO')])
-
-colSums(is.na(OIME))
-
-OIME$Descripcion <- gsub("<br>","|",OIME$Descripcion)
-
-colnames(OIME)
-
-OIME$Description <- NULL
-
-OIME_info  <- data.frame(apply(OIME[ , colnames(OIME)], 1, paste, collapse = "|" ))
-
-export(OIME_info,"./stores/Medellín/OIME_ofertas/OIME_info.xlsx")
-
-#SE SEPARA TEXTO EN COLUMNAS EN EXCEL; EN R, FALLA Y ES COMPLICADO!!!!
+# 
+# #Explorar los archivos KML
+# st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml")
+# st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml")
+# st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml")
+# st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml")
+# st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml")
+# 
+# 
+# OIME_2022_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml",layer="Apartamentos")
+# OIME_2022_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml",layer="Casas")
+# OIME_2021_apts_us <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="APARTAMENTOS USADOS.xlsx")
+# OIME_2021_apts_nuev <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="APARTAMENTOS NUEVOS.xlsx")
+# OIME_2021_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="CASAS.xlsx")
+# OIME_2020_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml", layer="APARTAMENTOS.xlsx")
+# OIME_2020_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml", layer="CASAS.xlsx")
+# OIME_2019_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml",layer="APARTAMENTOS.xlsx")
+# OIME_2019_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml",layer="CASAS.xlsx")
+# OIME_2018_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml", layer="APARTAMENTOS.xlsx")
+# OIME_2018_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml", layer="CASAS.xlsx")
+# 
+# OIME_2022_apts$YEAR <- 2022
+# OIME_2022_casas$YEAR <- 2022
+# OIME_2021_apts_us$YEAR <- 2021
+# OIME_2021_apts_nuev$YEAR <- 2021
+# OIME_2021_casas$YEAR <- 2021
+# OIME_2020_apts$YEAR <- 2020
+# OIME_2020_casas$YEAR <- 2020
+# OIME_2019_apts$YEAR <- 2019
+# OIME_2019_casas$YEAR <- 2019
+# OIME_2018_apts$YEAR <- 2018
+# OIME_2018_casas$YEAR <- 2018
+# 
+# 
+# OIME <- rbind(
+#   OIME_2022_apts,
+#   OIME_2022_casas,
+#   OIME_2021_apts_us,
+#   OIME_2021_apts_nuev,
+#   OIME_2021_casas,
+#   OIME_2020_apts,
+#   OIME_2020_casas,
+#   OIME_2019_apts,
+#   OIME_2019_casas,
+#   OIME_2018_apts,
+#   OIME_2018_casas)
+# 
+# leaflet() %>% addTiles() %>% 
+#   addCircleMarkers(data=OIME,popup = OIME$Description, color ="green")
+# 
+# 
+# OIME <- st_join(OIME,estratos_med[,c('MANZANA','ESTRATO')])
+# 
+# colSums(is.na(OIME))
+# 
+# OIME$Descripcion <- gsub("<br>","|",OIME$Descripcion)
+# 
+# colnames(OIME)
+# 
+# OIME$Description <- NULL
+# 
+# OIME_info  <- data.frame(apply(OIME[ , colnames(OIME)], 1, paste, collapse = "|" ))
+# 
+# export(OIME_info,"./stores/Medellín/OIME_ofertas/OIME_info.xlsx")
+# 
+# barrios_test <- data.frame(unique(test_med$BARRIO))
+# colnames(barrios_test) <- "BARRIOS"
+# 
+# barrios_train <- data.frame(unique(train_med$BARRIO))
+# colnames(barrios_train) <- "BARRIOS"
+# 
+# barrios <- rbind(barrios_test,barrios_train)
+# barrios <- unique(barrios)
+# 
+# rm(list=c('barrios_test','barrios_train'))
+# 
+# 
+# #SE SEPARA TEXTO EN COLUMNAS EN EXCEL; EN R, FALLA Y ES COMPLICADO!!!!
 
 OIME <- import("./stores/Medellín/OIME_ofertas/OIME_info_proc.xlsx")
 
 colnames(OIME)
+
+OIME$BARRIO <- gsub(" # "," NO.", OIME$Barrio)
+OIME$Barrio <- NULL
+
+test_med$BARRIO <- toupper(test_med$BARRIO)
+train_med$BARRIO <- toupper(train_med$BARRIO)
+
+OIME$ESTRATO <- OIME$Estrato
+OIME$Estrato <- NULL
+
 
 #PENDIENTE TERMINAR SI ALGO:
 # OIME_colnames <- c('ID', 'Geometry', 'Year', 'COBAMA', 'Estrato',
@@ -1117,54 +1139,52 @@ agreg_OIME_mzn <- OIME %>%
             Mediana_m2_mzn=median(Valor_m2))
 
 agreg_OIME_barr <- OIME %>% 
-  group_by(Barrio) %>%
+  group_by(BARRIO) %>%
   summarize(Media_m2_barr=mean(Valor_m2),
             Mediana_m2_barr=median(Valor_m2))
 
 agreg_OIME_estr <- OIME %>% 
-  group_by(Estrato) %>%
+  group_by(ESTRATO) %>%
   summarize(Media_m2_estr=mean(Valor_m2),
             Mediana_m2_estr=median(Valor_m2))
 
 test_med$COBAMA <- test_med$MANZANA
 train_med$COBAMA <- train_med$MANZANA
-test_med$Estrato <- test_med$ESTRATO
-train_med$Estrato <- train_med$ESTRATO
-test_med$Barrio <- test_med$NOMBRE.x
-train_med$Barrio <- train_med$NOMBRE.x
 
 test_med <- left_join(test_med,agreg_OIME_mzn,by="COBAMA")
 train_med <- left_join(train_med,agreg_OIME_mzn,by="COBAMA")
 
-test_med <- left_join(test_med,agreg_OIME_barr,by="Barrio")
-train_med <- left_join(train_med,agreg_OIME_barr,by="Barrio")
+test_med <- left_join(test_med,agreg_OIME_barr,by="BARRIO")
+train_med <- left_join(train_med,agreg_OIME_barr,by="BARRIO")
 
-test_med <- left_join(test_med,agreg_OIME_estr,by="Estrato")
-train_med <- left_join(train_med,agreg_OIME_estr,by="Estrato")
+test_med <- left_join(test_med,agreg_OIME_estr,by="ESTRATO")
+train_med <- left_join(train_med,agreg_OIME_estr,by="ESTRATO")
 
-test_med <- test_med[!duplicated(test_med), ]
+colSums(is.na(test_med))
+colSums(is.na(train_med))
+
 
 #Case: mejor avalúo disponible: Media
 test_med$mejor_val_m2_mean  <-  case_when(
-  !is.na(test_med$Media_m2_mzn.x) ~ as.double(test_med$Media_m2_mzn.x),
-  !is.na(test_med$Media_m2_barr.x) ~ as.double(test_med$Media_m2_barr.x),
+  !is.na(test_med$Media_m2_mzn) ~ as.double(test_med$Media_m2_mzn),
+  !is.na(test_med$Media_m2_barr) ~ as.double(test_med$Media_m2_barr),
   !is.na(test_med$Media_m2_estr) ~ as.double(test_med$Media_m2_estr))
 
 train_med$mejor_val_m2_mean  <-  case_when(
-  !is.na(train_med$Media_m2_mzn.x) ~ as.double(train_med$Media_m2_mzn.x),
-  !is.na(train_med$Media_m2_barr.x) ~ as.double(train_med$Media_m2_barr.x),
+  !is.na(train_med$Media_m2_mzn) ~ as.double(train_med$Media_m2_mzn),
+  !is.na(train_med$Media_m2_barr) ~ as.double(train_med$Media_m2_barr),
   !is.na(train_med$Media_m2_estr) ~ as.double(train_med$Media_m2_estr))
 
 
 #Case: mejor avalúo disponible: Mediana
 test_med$mejor_val_m2_median  <-  case_when(
-  !is.na(test_med$Mediana_m2_mzn.x) ~ as.double(test_med$Mediana_m2_mzn.x),
-  !is.na(test_med$Mediana_m2_barr.x) ~ as.double(test_med$Mediana_m2_barr.x),
+  !is.na(test_med$Mediana_m2_mzn) ~ as.double(test_med$Mediana_m2_mzn),
+  !is.na(test_med$Mediana_m2_barr) ~ as.double(test_med$Mediana_m2_barr),
   !is.na(test_med$Mediana_m2_estr) ~ as.double(test_med$Mediana_m2_estr))
 
 train_med$mejor_val_m2_median  <-  case_when(
-  !is.na(train_med$Mediana_m2_mzn.x) ~ as.double(train_med$Mediana_m2_mzn.x),
-  !is.na(train_med$Mediana_m2_barr.x) ~ as.double(train_med$Mediana_m2_barr.x),
+  !is.na(train_med$Mediana_m2_mzn) ~ as.double(train_med$Mediana_m2_mzn),
+  !is.na(train_med$Mediana_m2_barr) ~ as.double(train_med$Mediana_m2_barr),
   !is.na(train_med$Mediana_m2_estr) ~ as.double(train_med$Mediana_m2_estr))
 
 
@@ -1176,6 +1196,17 @@ train_med$val_tot_median <- train_med$mejor_val_m2_median * train_med$surface_to
 
 colSums(is.na(test_med))
 colSums(is.na(train_med))
+
+
+train_subset <- train_med[,c("description","price","val_tot_mean","val_tot_median")]
+train_subset <- filter(train_subset,!(is.na(train_subset$val_tot_mean)))
+train_subset$MSE_mean <- (train_subset$price - train_subset$val_tot_mean)^2
+train_subset$MSE_median <- (train_subset$price - train_subset$val_tot_median)^2
+
+colnames(train_subset)
+
+sapply(train_subset, mean)
+
 
 
 ## 6.5. REGRESIONES ----
@@ -1237,13 +1268,21 @@ reg5 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + s
            data=train_med)
 
 
-reg7 <- lm(price ~ bedrooms + ESTRATO + COD_CAT_US + COD_SUBCAT, 
+reg6 <- lm(price ~ bedrooms + ESTRATO + COD_CAT_US + COD_SUBCAT, 
            data=train_med)
  
 reg7 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total + factor(COD_SUBCAT), 
            data=train_med)
 
-stargazer(reg6,type="text")
+reg8 <- lm(price ~ surface_total + bathrooms + factor(ESTRATO) + bedrooms + 
+             factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
+             dist_park,
+           data=train_med)
+
+reg9 <- lm(price ~ val_tot_median,
+           data=train_med)
+
+stargazer(reg8,type="text")
 
 stargazer(reg1,reg2,reg3,type="text")
 stargazer(reg4,reg5,type="text")
