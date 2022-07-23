@@ -298,12 +298,37 @@ attach(train_prop_sf)
 train_prop_sf$description <- str_to_lower(description)
 train_prop_sf
 
-##Ahora se transforman las unidades de medidas, cambiándolas todas a mt2
+##Estandarización ### Ahora se transforman las unidades de medidas, cambiándolas todas a mt2
 train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "metros cuadrados" , 
                                             replacement = "mt2")
 
 train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "mts" , 
                                             replacement = "mt2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "mtrs2", 
+                                            replacement = "mt2")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "m2" ,
+                                            replacement = "mt2")
+                                    
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "mts2" ,
+                                            replacement = "mt2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "metros" ,
+                                            replacement = "mt2")
+
+##Se intentó con la sola letra "m". Sin embargo, reemplaza en todo lo que tenga la letra "m", por lo cual dessconfigura el texto de la variable descripcioón.
+
+#Se hace la prueba con algunas filas para identificar si el cambio se realizó en la base 
+train_prop_sf$description[59469]
+train_prop_sf$description[59216]
+train_prop_sf$description[39765]
+train_prop_sf$description[14]
+train_prop_sf$description[18]
+                                            
+                                           
 
 #Se crea un patrón para extraer el área medida en metro cuadrado de la vivienda, de la variable descripción
 
