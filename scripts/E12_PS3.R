@@ -50,7 +50,8 @@ p_load(rio,
        glmnet,
        xgboost,
        sfheaders,
-       nngeo)
+       nngeo,
+       parallel)
 
 
 
