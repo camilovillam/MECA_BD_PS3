@@ -544,7 +544,7 @@ skim(test_bog)
 
 #Para train:
 
-estrato_bog <- estrato_bog %>% filter(!st_is_empty(.))
+mz_bog <- mz_bog %>% filter(!st_is_empty(.))
 
 #Dividir Train entre las que sí encontró manzana y los NA (al final se unen)
 train_bog_mz_ok <- filter(train_bog,!(is.na(train_bog$MANCODIGO)))
@@ -566,10 +566,21 @@ library(sfheaders)
 train_bog_mz_na_df <- sf_to_df(train_bog_mz_na, fill = TRUE, unlist = NULL)
 saveRDS(train_bog_mz_na_df,"./stores/Bogota/rds_calculados/MZ_train_NA.rds")
 
+colSums(is.na(train_bog))
+train_bog <- rbind(train_bog_mz_ok,train_bog_mz_na)
+colSums(is.na(train_bog))
+
+nrow(train_bog)
+
+train_bog_mz_df <- sf_to_df(train_bog, fill = TRUE, unlist = NULL)
+saveRDS(train_bog_mz_df,"./stores/Bogota/rds_calculados/mz_train.rds")
+
+colSums(is.na(train_bog))
 
 ##5.2. Prueba base solo para chapinero ----
 
 #Base de chapinero ----
+
 train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
 
 skim(train_cha)
@@ -605,7 +616,7 @@ modelo1 <- as.formula (price ~ AVALUO_COM+p_upl+SCANOMBRE+rooms)
 
 modelo2 <- as.formula (price ~ p_upl+SCANOMBRE+rooms+bathrooms)
 
-modelo3 <- as.formula (price ~ p_upl+rooms+bathrooms+surface_covered)
+modelo3 <- as.formula (price ~ AVALUO_COM+rooms+bathrooms+surface_covered)
 
 install.packages("lagsarlmtree")
 library(lagsarlmtree)
@@ -617,6 +628,14 @@ Tr_train_sp <- as(Tr_train, "Spatial")
 Tr_train_neib <- dnearneigh(coordinates(Tr_train_sp), 0, 0.1, longlat = TRUE)
 
 listw <- nb2listw(Tr_train_neib, style="W", zero.policy = TRUE)
+
+# Prueba 0, con OLS
+
+reg1<-lm(modelo1,data=Tr_train)
+reg2<-lm(modelo2,data=Tr_train)
+reg3<-lm(modelo3,data=Tr_train)
+
+stargazer(reg1,reg2,reg3,type="text")
 
 # Prueba 1, saca error. Empty neighbour sets found.
 
