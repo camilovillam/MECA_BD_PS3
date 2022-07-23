@@ -322,6 +322,7 @@ train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern =
 ##Se intentó con la sola letra "m". Sin embargo, reemplaza en todo lo que tenga la letra "m", por lo cual dessconfigura el texto de la variable descripcioón.
 
 #Se hace la prueba con algunas filas para identificar si el cambio se realizó en la base 
+
 train_prop_sf$description[59469]
 train_prop_sf$description[59216]
 train_prop_sf$description[39765]
@@ -340,11 +341,12 @@ patron4 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+[:space:]+mt2" ## p
 patron5 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+mt2" ## pattern
 patron6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2" ## pattern
 patron7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+mt2" ## pattern
-patron8 = "[:space:]+[:digit:]+[:space:]+m2" ## pattern
+patron8 = "[:space:]+[:digit:]+[:space:]+mt2" ## pattern
 
-str_locate_all(string = train_prop$description[28] , pattern = x) ## detectar patrón
+##Ahora se extrae la información
 
-str_extract(string=train_prop$description[28] , pattern= x) ## extrac pattern
+
+str_extract(string=train_prop_sf$description[1:107567] , pattern= paste0( patron1, "|" ,patron2, "|" ,patron3, "|" ,patron4, "|" ,patron5, "|" ,patron6, "|" ,patron7, "|" ,patron8)) ## extrac pattern
 
 ##3.2. Imputación de datos----
 
