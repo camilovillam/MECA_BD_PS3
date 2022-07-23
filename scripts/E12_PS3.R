@@ -526,6 +526,13 @@ leaflet() %>% addTiles() %>%
   addPolygons(data=barrios_med %>% filter(grepl(14,LIMITECOMU)==TRUE),
               label=barrios_med$NOMBRE)
 
+#####TEMP:
+
+#Base de Medellín
+train_med <-subset(train_prop,train_prop$l3 =="Medellín")
+test_med <-subset(test_prop,test_prop$l3 =="Medellín")   
+
+
 
 ##6.2 INFORMACIÓN GEOGRÁFICA----
 
@@ -544,6 +551,17 @@ colnames(catastro_med)
 train_med <- st_join(train_med,catastro_med[,c('COMUNA','NOMBRE')])
 test_med <- st_join(test_med,catastro_med[,c('COMUNA','NOMBRE')])
 
+train_med$COD_COMUNA <- train_med$COMUNA
+test_med$COD_COMUNA <- test_med$COMUNA
+
+train_med$COMUNA <- train_med$NOMBRE
+test_med$COMUNA <- test_med$NOMBRE
+
+train_med$NOMBRE <- NULL
+test_med$NOMBRE <- NULL
+
+colnames(test_med)
+
 
 #####Barrio: ----
 
@@ -555,401 +573,325 @@ colnames(barrios_med)
 train_med <- st_join(train_med,barrios_med[,c('CODIGO','NOMBRE')])
 test_med <- st_join(test_med,barrios_med[,c('CODIGO','NOMBRE')])
 
+train_med$COD_BARRIO <- train_med$CODIGO
+test_med$COD_BARRIO <- test_med$CODIGO
+
+train_med$BARRIO <- train_med$NOMBRE
+test_med$BARRIO <- test_med$NOMBRE
+
+train_med$NOMBRE <- NULL
+test_med$NOMBRE <- NULL
+train_med$CODIGO <- NULL
+test_med$CODIGO <- NULL
+
+colnames(test_med)
+
+colSums(is.na(train_med))
+colSums(is.na(test_med))
+
+
+#### ASIGNACIÓN VARIABLES GEOGRÁFICAS: Estrato, uso del suelo.
+
+#El siguiente código es demorado; se puede saltar a la sección
+#6.2.5. en donde se cargan los datos calculados en las proóximas secciones.
+
+
+# 
+# #####Estrato: ----
+# 
+# estratos_med <- read_sf("./stores/Medellín/shp_ESTRATIFICACION/ESTRATIFICACION.shp")
+# st_crs(estratos_med)
+# estratos_med <- st_transform(estratos_med,4326)
+# colnames(estratos_med)
+# 
+# 
+# #Remover 346 polígonos que tienen estrato pero no manzana (calles)
+# colSums(is.na(estratos_med))
+# estratos_med <- estratos_med %>% filter(!is.na(estratos_med$MANZANA))
+# colSums(is.na(estratos_med))
+# 
+# estratos_med$geom_err <- st_is_valid(estratos_med, reason = T)
+# nrow(estratos_med)
+# table(estratos_med$geom_err)
+# 
+# 31618-31618
+# #301 errores en las geometrías
+# 
+# estratos_med <- st_make_valid(estratos_med)
+# 
+# estratos_med$geom_err <- st_is_valid(estratos_med, reason = T)
+# nrow(estratos_med)
+# table(estratos_med$geom_err)
+# #Quedan solo 4 errores en las geometrías
+# 
+# estratos_med <- filter(estratos_med,estratos_med$geom_err == "Valid Geometry")
+# nrow(estratos_med)
+# #Se eliminaron las 4 geometrías malas
+# 
+# #Remover geometrías vacías:
+# table(st_is_empty(estratos_med))
+# estratos_med <- estratos_med %>% filter(!st_is_empty(.))
+# 
+# 
+# train_med <- st_join(train_med,estratos_med[,c('MANZANA','ESTRATO')])
+# test_med <- st_join(test_med,estratos_med[,c('MANZANA','ESTRATO')])
+# 
+# colSums(is.na(train_med))
+# colSums(is.na(test_med))
+# 
+# #Corrección por vecinos por los NA
+# 
+# #Crear la base de estratos para la Comuna de El Poblado:
+# estr_med_pobl <- filter(estratos_med,COMUNA==14)
+# 
+# #Dividir Train entre las que sí encontró estrato/manzana y los NA (al final se unen)
+# train_med_estr_ok <- filter(train_med,!(is.na(train_med$MANZANA)))
+# train_med_estr_na <- filter(train_med,is.na(train_med$MANZANA))
+# 
+# nrow(train_med_estr_ok)+nrow(train_med_estr_na)
+# nrow(train_med)
+# 
+# train_med_estr_na$MANZANA <- NULL
+# train_med_estr_na$ESTRATO <- NULL
+# 
+# 
+# #Dividir Test entre las que sí encontró estrato/manzana y los NA (al final se unen)
+# test_med_estr_ok <- filter(test_med,!(is.na(test_med$MANZANA)))
+# test_med_estr_na <- filter(test_med,is.na(test_med$MANZANA))
+# 
+# nrow(test_med_estr_ok)+nrow(test_med_estr_na)
+# nrow(test_med)
+# 
+# test_med_estr_na$MANZANA <- NULL
+# test_med_estr_na$ESTRATO <- NULL
+# 
+# #Ejecución del Join con Max Dist = 50m
+# 
+# #Para test:
+# 
+# start_test = Sys.time()
+# test_med_estr_na <- st_join(test_med_estr_na,estr_med_pobl[,c('MANZANA','ESTRATO')],
+#                            join = st_nn, k = 1, maxdist = 50, parallel=8)
+# end_test = Sys.time()
+# end_test - start_test
+# 
+# colSums(is.na(test_med_estr_na))
+# 
+# test_med_estr_na_df <- sf_to_df(test_med_estr_na, fill = TRUE, unlist = NULL)
+# saveRDS(test_med_estr_na_df,"./stores/Medellín/rds_calculados/ESTRATO_test_NA.rds")
+# 
+# colSums(is.na(test_med))
+# test_med <- rbind(test_med_estr_ok,test_med_estr_na)
+# colSums(is.na(test_med))
+# 
+# nrow(test_med)
+# 
+# test_med_estrato_df <- sf_to_df(test_med, fill = TRUE, unlist = NULL)
+# saveRDS(test_med_estrato_df,"./stores/Medellín/rds_calculados/ESTRATO_test.rds")
+# 
+# 
+# 
+# #Para train:
+# 
+# start_train = Sys.time()
+# train_med_estr_na <- st_join(train_med_estr_na,estratos_med[,c('MANZANA','ESTRATO')],
+#                             join = st_nn, k = 1, maxdist = 50, parallel=8)
+# end_train = Sys.time()
+# end_train - start_train
+# 
+# colSums(is.na(train_med_estr_na))
+# 
+# train_med_estr_na_df <- sf_to_df(train_med_estr_na, fill = TRUE, unlist = NULL)
+# saveRDS(train_med_estr_na_df,"./stores/Medellín/rds_calculados/ESTRATO_train_NA.rds")
+# 
+# colSums(is.na(train_med))
+# train_med <- rbind(train_med_estr_ok,train_med_estr_na)
+# colSums(is.na(train_med))
+# 
+# nrow(train_med)
+# 
+# train_med_estrato_df <- sf_to_df(train_med, fill = TRUE, unlist = NULL)
+# saveRDS(train_med_estrato_df,"./stores/Medellín/rds_calculados/ESTRATO_train.rds")
+# 
+# 
+# #Revisión luego de imputar el Uso:
+# colSums(is.na(train_med))
+# colSums(is.na(test_med))
+# 
+# #En test quedan dos observaciones sin estrato y sin manzana.
+# #Se revisan y son dos observaciones "basura", erróneas en Test.
+# 
+# # 89162e83a15bd128e9834fc2
+# # 4133ae5fc32d14793a9968d2
+# 
+# leaflet() %>% addTiles() %>% 
+#   addCircleMarkers(data=test_med %>% filter(is.na(test_med$MANZANA)),
+#                    color="red",label=test_med$ESTRATO)
+# 
+# 
+# 
+# 
+# #### Uso del suelo: ----
+# 
+# usos_med <- read_sf("./stores/Medellín/shp_UsosSueloUrbano/UsosGnalesSueloUrbano.shp")
+# st_crs(usos_med)
+# usos_med <- st_transform(usos_med,4326)
+# 
+# usos_med$geom_err <- st_is_valid(usos_med, reason = T)
+# nrow(usos_med)
+# table(usos_med$geom_err)
+# 
+# 25448-25343
+# #105 errores en las geometrías
+# 
+# usos_med <- st_make_valid(usos_med)
+# 
+# usos_med$geom_err <- st_is_valid(usos_med, reason = T)
+# nrow(usos_med)
+# table(usos_med$geom_err)
+# 
+# usos_med <- filter(usos_med,usos_med$geom_err == "Valid Geometry")
+# nrow(usos_med)
+# #Se elimina la geometría mala
+# 
+# colnames(usos_med)
+# train_med <- st_join(train_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
+# test_med <- st_join(test_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
+# 
+# colSums(is.na(train_med))
+# colSums(is.na(test_med))
+# 
+# 
+# #Corrección por vecinos por los NA
+# 
+# #Crear la base de usos para la Comuna de El Poblado:
+# usos_med_pobl <- st_join(usos_med,catastro_med[,c('COMUNA','NOMBRE')])
+# usos_med_pobl <- filter(usos_med_pobl,usos_med_pobl$COMUNA==14)
+# 
+# #Dividir Train entre las que sí encontró Uso y los NA (al final se unen)
+# train_med_uso_ok <- filter(train_med,!(is.na(train_med$AREAGRALUS)))
+# train_med_uso_na <- filter(train_med,is.na(train_med$AREAGRALUS))
+# 
+# nrow(train_med_uso_ok)+nrow(train_med_uso_na)
+# nrow(train_med)
+# 
+# #Elimino las columnas con NA para poder hacer un nuevo Join
+# train_med_uso_na$COD_CAT_US <- NULL
+# train_med_uso_na$COD_SUBCAT <- NULL
+# train_med_uso_na$AREAGRALUS <- NULL
+# train_med_uso_na$SUBCATEGOR <- NULL
+# 
+# #Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
+# test_med_uso_ok <- filter(test_med,!(is.na(test_med$AREAGRALUS)))
+# test_med_uso_na <- filter(test_med,is.na(test_med$AREAGRALUS))
+# 
+# nrow(test_med_uso_ok)+nrow(test_med_uso_na)
+# nrow(test_med)
+# 
+# #Elimino las columnas con NA para poder hacer un nuevo Join
+# test_med_uso_na$COD_CAT_US <- NULL
+# test_med_uso_na$COD_SUBCAT <- NULL
+# test_med_uso_na$AREAGRALUS <- NULL
+# test_med_uso_na$SUBCATEGOR <- NULL
+# 
+# 
+# #Ejecución del Join con Max Dist = 50m
+# 
+# #Para test:
+# 
+# start_test = Sys.time()
+# test_med_uso_na <- st_join(test_med_uso_na,usos_med_pobl[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
+#                            join = st_nn, k = 1, maxdist = 50, parallel=3)
+# end_test = Sys.time()
+# end_test - start_test
+# 
+# #Reviso si quedaron NA
+# colSums(is.na(test_med_uso_na))
+# 
+# #Guardo en un DataFrame el resultado de la búsqueda de USOS
+# test_med_uso_na_df <- sf_to_df(test_med_uso_na, fill = TRUE, unlist = NULL)
+# saveRDS(test_med_uso_na_df,"./stores/Medellín/rds_calculados/USOS_test_NA.rds")
+# 
+# colSums(is.na(test_med))
+# test_med <- rbind(test_med_uso_ok,test_med_uso_na)
+# colSums(is.na(test_med))
+# 
+# nrow(test_med)
+# 
+# test_med_usos_df <- sf_to_df(test_med, fill = TRUE, unlist = NULL)
+# saveRDS(test_med_usos_df,"./stores/Medellín/rds_calculados/USOS_test.rds")
+# 
+# 
+# 
+# #Ejecución del Join con Max Dist = 50m
+# 
+# #Para Train:
+# 
+# start_train = Sys.time()
+# train_med_uso_na <- st_join(train_med_uso_na,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
+#                            join = st_nn, k = 1, maxdist = 50, parallel=3)
+# end_train = Sys.time()
+# end_train - start_train
+# 
+# #Reviso si quedaron NA
+# colSums(is.na(train_med_uso_na))
+# 
+# #Guardo en un DataFrame el resultado de la búsqueda de USOS
+# #(para evitar correr de nuevo el código, que se demora)
+# 
+# train_med_uso_na_df <- sf_to_df(train_med_uso_na, fill = TRUE, unlist = NULL)
+# saveRDS(train_med_uso_na_df,"./stores/Medellín/rds_calculados/USOS_NA_train.rds")
+# 
+# colSums(is.na(train_med))
+# train_med <- rbind(train_med_uso_ok,train_med_uso_na)
+# colSums(is.na(train_med))
+# 
+# nrow(train_med)
+# 
+# train_med_usos_df <- sf_to_df(train_med, fill = TRUE, unlist = NULL)
+# saveRDS(train_med_usos_df,"./stores/Medellín/rds_calculados/USOS_train.rds")
+# 
+# 
+# 
+# #Revisión luego de imputar el Uso:
+# colSums(is.na(train_med))
+# colSums(is.na(test_med))
+
+
+
+#### 6.2.5. Carga de las variables geográficas calculadas: ----
+
+#Cargo las bases de datos:
+estrm_test <-readRDS("./stores/Medellín/rds_calculados/ESTRATO_test.rds")
+estrm_train <-readRDS("./stores/Medellín/rds_calculados/ESTRATO_train.rds")
+usosm_test <-readRDS("./stores/Medellín/rds_calculados/USOS_test.rds")
+usosm_train <-readRDS("./stores/Medellín/rds_calculados/USOS_train.rds")
+
+
+colnames(estrm_test)
+estrm_test <- estrm_test[,c('property_id', 'MANZANA','ESTRATO')]
+estrm_train <- estrm_train[,c('property_id', 'MANZANA','ESTRATO')]
+
+colnames(usosm_test)
+usosm_test <- usosm_test[,c('property_id','COD_CAT_US',
+                            'COD_SUBCAT','AREAGRALUS','SUBCATEGOR')]
+usosm_train <- usosm_train[,c('property_id','COD_CAT_US',
+                            'COD_SUBCAT','AREAGRALUS','SUBCATEGOR')]
+
+test_med <- left_join(test_med,estrm_test,by="property_id")
+train_med <- left_join(train_med,estrm_train,by="property_id")
+
+test_med <- left_join(test_med,usosm_test,by="property_id")
+train_med <- left_join(train_med,usosm_train,by="property_id")
 
 colSums(is.na(train_med))
 colSums(is.na(test_med))
 
 
 
-#####Estrato: ----
+## 6.3. FEATURES DE OSM: ----
 
-estratos_med <- read_sf("./stores/Medellín/shp_ESTRATIFICACION/ESTRATIFICACION.shp")
-st_crs(estratos_med)
-estratos_med <- st_transform(estratos_med,4326)
-colnames(estratos_med)
-
-
-#Remover 346 polígonos que tienen estrato pero no manzana (calles)
-colSums(is.na(estratos_med))
-estratos_med <- estratos_med %>% filter(!is.na(estratos_med$MANZANA))
-colSums(is.na(estratos_med))
-
-estratos_med$geom_err <- st_is_valid(estratos_med, reason = T)
-nrow(estratos_med)
-table(estratos_med$geom_err)
-
-31618-31618
-#301 errores en las geometrías
-
-estratos_med <- st_make_valid(estratos_med)
-
-estratos_med$geom_err <- st_is_valid(estratos_med, reason = T)
-nrow(estratos_med)
-table(estratos_med$geom_err)
-#Quedan solo 4 errores en las geometrías
-
-estratos_med <- filter(estratos_med,estratos_med$geom_err == "Valid Geometry")
-nrow(estratos_med)
-#Se eliminaron las 4 geometrías malas
-
-#Remover geometrías vacías:
-table(st_is_empty(estratos_med))
-estratos_med <- estratos_med %>% filter(!st_is_empty(.))
-
-
-train_med <- st_join(train_med,estratos_med[,c('MANZANA','ESTRATO')])
-test_med <- st_join(test_med,estratos_med[,c('MANZANA','ESTRATO')])
-
-colSums(is.na(train_med))
-colSums(is.na(test_med))
-
-#Corrección por vecinos por los NA
-
-#Crear la base de estratos para la Comuna de El Poblado:
-estr_med_pobl <- filter(estratos_med,COMUNA==14)
-
-#Dividir Train entre las que sí encontró estrato/manzana y los NA (al final se unen)
-train_med_estr_ok <- filter(train_med,!(is.na(train_med$MANZANA)))
-train_med_estr_na <- filter(train_med,is.na(train_med$MANZANA))
-
-nrow(train_med_estr_ok)+nrow(train_med_estr_na)
-nrow(train_med)
-
-train_med_estr_na$MANZANA <- NULL
-train_med_estr_na$ESTRATO <- NULL
-
-
-#Dividir Test entre las que sí encontró estrato/manzana y los NA (al final se unen)
-test_med_estr_ok <- filter(test_med,!(is.na(test_med$MANZANA)))
-test_med_estr_na <- filter(test_med,is.na(test_med$MANZANA))
-
-nrow(test_med_estr_ok)+nrow(test_med_estr_na)
-nrow(test_med)
-
-test_med_estr_na$MANZANA <- NULL
-test_med_estr_na$ESTRATO <- NULL
-
-#Ejecución del Join con Max Dist = 50m
-
-#Para test:
-
-start_test = Sys.time()
-test_med_estr_na <- st_join(test_med_estr_na,estr_med_pobl[,c('MANZANA','ESTRATO')],
-                           join = st_nn, k = 1, maxdist = 50, parallel=8)
-end_test = Sys.time()
-end_test - start_test
-
-colSums(is.na(test_med_estr_na))
-
-test_med_estr_na_df <- sf_to_df(test_med_estr_na, fill = TRUE, unlist = NULL)
-saveRDS(test_med_estr_na_df,"./stores/Medellín/rds_calculados/ESTRATO_test_NA.rds")
-
-colSums(is.na(test_med))
-test_med <- rbind(test_med_estr_ok,test_med_estr_na)
-colSums(is.na(test_med))
-
-nrow(test_med)
-
-test_med_estrato_df <- sf_to_df(test_med, fill = TRUE, unlist = NULL)
-saveRDS(test_med_estrato_df,"./stores/Medellín/rds_calculados/ESTRATO_test.rds")
-
-
-
-#Para train:
-
-start_train = Sys.time()
-train_med_estr_na <- st_join(train_med_estr_na,estratos_med[,c('MANZANA','ESTRATO')],
-                            join = st_nn, k = 1, maxdist = 50, parallel=8)
-end_train = Sys.time()
-end_train - start_train
-
-colSums(is.na(train_med_estr_na))
-
-train_med_estr_na_df <- sf_to_df(train_med_estr_na, fill = TRUE, unlist = NULL)
-saveRDS(train_med_estr_na_df,"./stores/Medellín/rds_calculados/ESTRATO_train_NA.rds")
-
-colSums(is.na(train_med))
-train_med <- rbind(train_med_estr_ok,train_med_estr_na)
-colSums(is.na(train_med))
-
-nrow(train_med)
-
-train_med_estrato_df <- sf_to_df(train_med, fill = TRUE, unlist = NULL)
-saveRDS(train_med_estrato_df,"./stores/Medellín/rds_calculados/ESTRATO_train.rds")
-
-
-#Revisión luego de imputar el Uso:
-colSums(is.na(train_med))
-colSums(is.na(test_med))
-
-#En test quedan dos observaciones sin estrato y sin manzana.
-#Se revisan y son dos observaciones "basura", erróneas en Test.
-
-# 89162e83a15bd128e9834fc2
-# 4133ae5fc32d14793a9968d2
-
-leaflet() %>% addTiles() %>% 
-  addCircleMarkers(data=test_med %>% filter(is.na(test_med$MANZANA)),
-                   color="red",label=test_med$ESTRATO)
-
-
-
-
-#### Uso del suelo: ----
-
-usos_med <- read_sf("./stores/Medellín/shp_UsosSueloUrbano/UsosGnalesSueloUrbano.shp")
-st_crs(usos_med)
-usos_med <- st_transform(usos_med,4326)
-
-usos_med$geom_err <- st_is_valid(usos_med, reason = T)
-nrow(usos_med)
-table(usos_med$geom_err)
-
-25448-25343
-#105 errores en las geometrías
-
-usos_med <- st_make_valid(usos_med)
-
-usos_med$geom_err <- st_is_valid(usos_med, reason = T)
-nrow(usos_med)
-table(usos_med$geom_err)
-
-usos_med <- filter(usos_med,usos_med$geom_err == "Valid Geometry")
-nrow(usos_med)
-#Se elimina la geometría mala
-
-colnames(usos_med)
-train_med <- st_join(train_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
-test_med <- st_join(test_med,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")])
-
-colSums(is.na(train_med))
-colSums(is.na(test_med))
-
-
-#Corrección por vecinos por los NA
-
-#Crear la base de usos para la Comuna de El Poblado:
-usos_med_pobl <- st_join(usos_med,catastro_med[,c('COMUNA','NOMBRE')])
-usos_med_pobl <- filter(usos_med_pobl,usos_med_pobl$COMUNA==14)
-
-#Dividir Train entre las que sí encontró Uso y los NA (al final se unen)
-train_med_uso_ok <- filter(train_med,!(is.na(train_med$AREAGRALUS)))
-train_med_uso_na <- filter(train_med,is.na(train_med$AREAGRALUS))
-
-nrow(train_med_uso_ok)+nrow(train_med_uso_na)
-nrow(train_med)
-
-#Elimino las columnas con NA para poder hacer un nuevo Join
-train_med_uso_na$COD_CAT_US <- NULL
-train_med_uso_na$COD_SUBCAT <- NULL
-train_med_uso_na$AREAGRALUS <- NULL
-train_med_uso_na$SUBCATEGOR <- NULL
-
-#Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
-test_med_uso_ok <- filter(test_med,!(is.na(test_med$AREAGRALUS)))
-test_med_uso_na <- filter(test_med,is.na(test_med$AREAGRALUS))
-
-nrow(test_med_uso_ok)+nrow(test_med_uso_na)
-nrow(test_med)
-
-#Elimino las columnas con NA para poder hacer un nuevo Join
-test_med_uso_na$COD_CAT_US <- NULL
-test_med_uso_na$COD_SUBCAT <- NULL
-test_med_uso_na$AREAGRALUS <- NULL
-test_med_uso_na$SUBCATEGOR <- NULL
-
-
-#Ejecución del Join con Max Dist = 50m
-
-#Para test:
-
-start_test = Sys.time()
-test_med_uso_na <- st_join(test_med_uso_na,usos_med_pobl[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
-                           join = st_nn, k = 1, maxdist = 50, parallel=3)
-end_test = Sys.time()
-end_test - start_test
-
-#Reviso si quedaron NA
-colSums(is.na(test_med_uso_na))
-
-#Guardo en un DataFrame el resultado de la búsqueda de USOS
-test_med_uso_na_df <- sf_to_df(test_med_uso_na, fill = TRUE, unlist = NULL)
-saveRDS(test_med_uso_na_df,"./stores/Medellín/rds_calculados/USOS_test_NA.rds")
-
-colSums(is.na(test_med))
-test_med <- rbind(test_med_uso_ok,test_med_uso_na)
-colSums(is.na(test_med))
-
-nrow(test_med)
-
-test_med_usos_df <- sf_to_df(test_med, fill = TRUE, unlist = NULL)
-saveRDS(test_med_usos_df,"./stores/Medellín/rds_calculados/USOS_test.rds")
-
-
-
-#Ejecución del Join con Max Dist = 50m
-
-#Para Train:
-
-start_train = Sys.time()
-train_med_uso_na <- st_join(train_med_uso_na,usos_med[,c("COD_CAT_US","COD_SUBCAT","AREAGRALUS","SUBCATEGOR")],
-                           join = st_nn, k = 1, maxdist = 50, parallel=3)
-end_train = Sys.time()
-end_train - start_train
-
-#Reviso si quedaron NA
-colSums(is.na(train_med_uso_na))
-
-#Guardo en un DataFrame el resultado de la búsqueda de USOS
-#(para evitar correr de nuevo el código, que se demora)
-
-train_med_uso_na_df <- sf_to_df(train_med_uso_na, fill = TRUE, unlist = NULL)
-saveRDS(train_med_uso_na_df,"./stores/Medellín/rds_calculados/USOS_NA_train.rds")
-
-colSums(is.na(train_med))
-train_med <- rbind(train_med_uso_ok,train_med_uso_na)
-colSums(is.na(train_med))
-
-nrow(train_med)
-
-train_med_usos_df <- sf_to_df(train_med, fill = TRUE, unlist = NULL)
-saveRDS(train_med_usos_df,"./stores/Medellín/rds_calculados/USOS_train.rds")
-
-
-
-#Revisión luego de imputar el Uso:
-colSums(is.na(train_med))
-colSums(is.na(test_med))
-
-
-
-#### Manzanas del DANE: ----
-
-manz_med <- read_sf("./stores/Medellín/shp_MGNDANE/MGN_URB_MANZANA.shp")
-st_crs(manz_med)
-colnames(manz_med)
-manz_med <- st_transform(manz_med,4326)
-
-manz_med$geom_err <- st_is_valid(manz_med, reason = T)
-nrow(manz_med)
-table(manz_med$geom_err)
-
-25448-25343
-#1 error en la geometría
-
-manz_med <- st_make_valid(manz_med)
-
-manz_med$geom_err <- st_is_valid(manz_med, reason = T)
-nrow(manz_med)
-table(manz_med$geom_err)
-
-manz_med <- filter(manz_med,manz_med$geom_err == "Valid Geometry")
-nrow(manz_med)
-#Se elimina la geometría mala
-
-colnames(manz_med)
-train_med <- st_join(train_med,manz_med[,c("CPOB_CCDGO","MANZ_CCDGO","MANZ_CCNCT","MANZ_CAG")])
-test_med <- st_join(test_med,manz_med[,c("CPOB_CCDGO","MANZ_CCDGO","MANZ_CCNCT","MANZ_CAG")])
-
-colSums(is.na(train_med)) #7440 en TRAIN sin MZN
-colSums(is.na(test_med))  #3114 en TEST sin MZN
-
-
-#Corrección por vecinos por los NA
-
-#Crear la base de usos para la Comuna de El Poblado:
-manz_med_pobl <- st_join(manz_med,catastro_med[,c('COMUNA','NOMBRE')])
-manz_med_pobl <- filter(manz_med_pobl,manz_med_pobl$COMUNA==14)
-
-leaflet() %>% addTiles() %>% addPolygons(data=manz_med_pobl)  
-
-#Dividir Train entre las que sí encontró Uso y los NA (al final se unen)
-train_med_mzn_ok <- filter(train_med,!(is.na(train_med$MANZ_CCDGO)))
-train_med_mzn_na <- filter(train_med,is.na(train_med$MANZ_CCDGO))
-
-nrow(train_med_mzn_ok)+nrow(train_med_mzn_na)
-nrow(train_med)
-
-#Elimino las columnas con NA para hacer un nuevo join
-train_med_mzn_na$CPOB_CCDGO <- NULL
-train_med_mzn_na$MANZ_CCDGO <- NULL
-train_med_mzn_na$MANZ_CCNCT <- NULL
-train_med_mzn_na$MANZ_CAG <- NULL
-
-
-#Dividir Test entre las que sí encontró Uso y los NA (al final se unen)
-test_med_mzn_ok <- filter(test_med,!(is.na(test_med$MANZ_CCDGO)))
-test_med_mzn_na <- filter(test_med,is.na(test_med$MANZ_CCDGO))
-
-nrow(test_med_mzn_ok)+nrow(test_med_mzn_na)
-nrow(test_med)
-
-colnames(test_med_mzn_na)
-test_med_mzn_na <- test_med_mzn_na[,-(32:35)]  #OJO, ELIMINAR COLUMNAS CORRECTAS
-
-#Elimino las columnas con NA para hacer un nuevo join
-test_med_mzn_na$CPOB_CCDGO <- NULL
-test_med_mzn_na$MANZ_CCDGO <- NULL
-test_med_mzn_na$MANZ_CCNCT <- NULL
-test_med_mzn_na$MANZ_CAG <- NULL
-
-
-#Ejecución del Join con Max Dist = 50m
-
-#Para test:
-
-start_test = Sys.time()
-test_med_mzn_na <- st_join(test_med_mzn_na,manz_med_pobl[,c("CPOB_CCDGO","MANZ_CCDGO","MANZ_CCNCT","MANZ_CAG")],
-                           join = st_nn, k = 1, maxdist = 50, parallel=3)
-end_test = Sys.time()
-end_test - start_test
-
-colSums(is.na(test_med_mzn_na))
-
-test_med_mzn_na_df <- sf_to_df(test_med_mzn_na, fill = TRUE, unlist = NULL)
-saveRDS(test_med_mzn_na_df,"./stores/Medellín/rds_calculados/MZN_test_NA.rds")
-
-colSums(is.na(test_med))
-test_med <- rbind(test_med_mzn_ok,test_med_mzn_na)
-colSums(is.na(test_med))
-
-nrow(test_med)
-
-test_med_mzn_df <- sf_to_df(test_med, fill = TRUE, unlist = NULL)
-saveRDS(test_med_mzn_df,"./stores/Medellín/rds_calculados/MZN_test.rds")
-
-
-#Para train:
-
-start_train = Sys.time()
-train_med_mzn_na <- st_join(train_med_mzn_na,manz_med[,c("CPOB_CCDGO","MANZ_CCDGO","MANZ_CCNCT","MANZ_CAG")],
-                           join = st_nn, k = 1, maxdist = 50, parallel=3)
-end_train = Sys.time()
-end_train - start_train
-
-colSums(is.na(train_med_mzn_na))
-
-train_med_mzn_na_df <- sf_to_df(train_med_mzn_na, fill = TRUE, unlist = NULL)
-saveRDS(train_med_mzn_na_df,"./stores/Medellín/rds_calculados/MZN_train_NA.rds")
-
-colSums(is.na(train_med))
-train_med <- rbind(train_med_mzn_ok,train_med_mzn_na)
-colSums(is.na(train_med))
-
-nrow(train_med)
-
-train_med_mzn_df <- sf_to_df(train_med, fill = TRUE, unlist = NULL)
-saveRDS(train_med_mzn_df,"./stores/Medellín/rds_calculados/MZN_train.rds")
-
-#Revisión luego de imputar el Uso:
-colSums(is.na(train_med))
-colSums(is.na(test_med))
-
-
-
-### FEATURES DE OSM: ----
-
-#Estaciones de metro en Medellín: ----
+### 6.3.1. Estaciones de metro en Medellín: ----
 
 ## objeto osm
 metromed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
@@ -973,7 +915,7 @@ test_med$dist_metro <- min_dist_metro_test
 train_med$dist_metro <- min_dist_metro_train
 
 
-#Hospitales y clínicas en Medellín: ----
+### 6.3.2. Hospitales y clínicas en Medellín: ----
 
 ## objeto osm
 hospmed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
@@ -1021,7 +963,7 @@ test_med$dist_hosp <- min_dist_hospm_test
 train_med$dist_hosp <- min_dist_hospm_train
 
 
-#Centros comerciales en Medellín: ----
+### 6.3.3. Centros comerciales en Medellín: ----
 
 ## objeto osm
 ccommed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
@@ -1044,7 +986,7 @@ test_med$dist_ccomerc <- min_dist_ccomercm_test
 train_med$dist_ccomerc <- min_dist_ccomercm_train
 
 
-#Parques en Medellín: ----
+### 6.3.4. Parques en Medellín: ----
 
 ## objeto osm
 parkmed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
@@ -1067,94 +1009,20 @@ test_med$dist_park <- min_dist_parkm_test
 train_med$dist_park <- min_dist_parkm_train
 
 
+colSums(is.na(train_med))
+colSums(is.na(test_med))
 
-#### PENDIENTE: Información de Predios Medellín ----
-
-### Por ahora, no parece muy prometedor...
-
-#Puede contener valor promedio de m2, explorar
-
-predios_med <- import("./stores/Medellín/informacion_predios.csv")
-colnames(predios_med)
-
-ubic_predios_med <- import("./stores/Medellín/UBICACION_PREDIO.csv")
-colnames(ubic_predios_med)
+export(train_med,"./stores/Medellín/train_med.rds")
+export(test_med,"./stores/Medellín/test_med.rds")
 
 
-nrow(predios_med)
-nrow(ubic_predios_med)
+##6.4. AVALÚO A PARTIR DEL OBSERVATORIO INMOBILIARIO DE MEDELLÍN ----
 
-pred_med <- left_join(ubic_predios_med,predios_med, by="CBML")
-nrow(pred_med)
+train_med <- import("./stores/Medellín/train_med.rds")
+test_med <- import("./stores/Medellín/train_med.rds")
 
-table(pred_med$UsoPredial,pred_med$DESTINACION)
-
-skim(predios_med)
-
-predios_med$Cod_MANZ <- substr(predios_med$CBML,1,7)
-
-table(predios_med$UsoPredial)
-
-#Creo que los valores de USO  1 y 10 me sirven, entiendo que son 
-#residenciales y complementarios
-
-agreg_predios_med <- predios_med %>% 
-  group_by(COBAMA,UsoPredial) %>%
-  summarize(Avaluo_prom=mean(AvaluoTotal),
-            Num_pred=n())
-
-
-
-vmg_manz_med <- read_sf("./stores/Medellín/shp_VMG_MANZANA_INFO/VMG_MANZANA_INFO.shp")
-
-colnames(vmg_manz_med)
-head(vmg_manz_med)
-
-vmg_manz_med_df <- sf_to_df(vmg_manz_med, fill = TRUE, unlist = NULL)
-rm(vmg_manz_med)
-vmg_manz_med_df<- filter(vmg_manz_med_df,vmg_manz_med_df$DESTINACIO=="Residencial")
-head(vmg_manz_med_df)
-colnames(vmg_manz_med_df)
-vmg_manz_med_df<- vmg_manz_med_df[,-(13:20)]
-nrow(vmg_manz_med_df)
-vmg_manz_med_df<- vmg_manz_med_df[!duplicated(vmg_manz_med_df), ]
-nrow(vmg_manz_med_df)
-head(vmg_manz_med_df)
-
-
-colnames(agreg_predios_med)
-
-
-pred_med <- left_join(vmg_manz_med_df,agreg_predios_med,by="COBAMA")
-nrow(pred_med)
-pred_med_res <- filter(pred_med,pred_med$UsoPredial==1)
-nrow(pred_med_res)
-
-pred_med_res$Avaluo_propiet <- pred_med_res$Avaluo_prom / pred_med_res$CANT_PROPI
-
-head(pred_med)
-table(pred_med_res$UsoPredial)
-colnames(pred_med_res)
-
-nrow(test_med)
-colnames(test_med)
-unique(test_med$MANZANA)
-
-test_med$COBAMA <- test_med$MANZANA
-
-test_med_aval <- left_join(test_med,pred_med_res,by="COBAMA")
-
-nrow(test_med_aval)
-colnames(test_med_aval)
-colSums(is.na(test_med_aval))
-
-
-
-### PENDIENTE (EXPERIMENTAL) OBSERVATORIO INMOBILIARIO DE MEDELLÍN ----
-
-
-#Observatorio Inmobiliario de Medellín
-
+#Archivos del Observatorio Inmobiliario de Medellín:
+#Fuente: 
 
 #Explorar los archivos KML
 st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml")
@@ -1278,9 +1146,9 @@ test_med <- test_med[!duplicated(test_med), ]
 
 #Case: mejor avalúo disponible: Media
 test_med$mejor_val_m2_mean  <-  case_when(
-    !is.na(test_med$Media_m2_mzn.x) ~ as.double(test_med$Media_m2_mzn.x),
-    !is.na(test_med$Media_m2_barr.x) ~ as.double(test_med$Media_m2_barr.x),
-    !is.na(test_med$Media_m2_estr) ~ as.double(test_med$Media_m2_estr))
+  !is.na(test_med$Media_m2_mzn.x) ~ as.double(test_med$Media_m2_mzn.x),
+  !is.na(test_med$Media_m2_barr.x) ~ as.double(test_med$Media_m2_barr.x),
+  !is.na(test_med$Media_m2_estr) ~ as.double(test_med$Media_m2_estr))
 
 train_med$mejor_val_m2_mean  <-  case_when(
   !is.na(train_med$Media_m2_mzn.x) ~ as.double(train_med$Media_m2_mzn.x),
@@ -1310,12 +1178,11 @@ colSums(is.na(test_med))
 colSums(is.na(train_med))
 
 
-
-## 6.3. REGRESIONES ----
+## 6.5. REGRESIONES ----
 
 ### PARTIR LAS BASES DE DATOS: TRAIN, EVAL, TEST.
 
-##4.1. Partición de la base de datos en tres----
+### 6.5.1. Partición de la base de datos en tres----
 
 #La base de datos Train se divide en tres particiones:
 # Tr_train: Entrenar el modelo
