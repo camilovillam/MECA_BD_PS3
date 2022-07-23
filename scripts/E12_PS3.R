@@ -272,6 +272,8 @@ table(is.na(train_prop$surface_covered)) # en la superficie cubierta hay 87368 n
 ##´Demostración con área total de la vivienda
 attach(train_prop)
 description
+description[125]
+
 
 #Se crea una sola variable que contiene la latitud y la longitud
 train_prop_sf = train_prop %>% st_as_sf(coords=c("lon", "lat"),crs=4326)
