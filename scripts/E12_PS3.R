@@ -258,11 +258,13 @@ p_load(tidyverse,rio,
        sf, 
        leaflet,
        tmaptools, 
-       osmdata) 
+       osmdata, 
+       skim) 
 
 #Ahora se observa la base de datos
 View(train_prop)
 table(train_prop$l3)
+skim(train_prop)
 
 #Se obeservan los NA's de la superficie total y del área cubierta, pues son variables de interés en el precio de la vivienda
 table(is.na(train_prop$surface_total)) # en el área total hay 79845 na's
@@ -275,10 +277,13 @@ description
 description[125]
 
 
-#Se crea una sola variable que contiene la latitud y la longitud
+#Se crea una sola variable que contiene la latitud y la longitud para poderlo visualizar
 train_prop_sf = train_prop %>% st_as_sf(coords=c("lon", "lat"),crs=4326)
 
+class(train_prop_sf)
 
+#Plot mapas
+leaflet() %>% addTiles() %>% addCircles(data=train_prop)
 
 
 ##3.2. Imputación de datos----
