@@ -648,6 +648,12 @@ colSums(is.na(test_med))
 test_med <- rbind(test_med_estr_ok,test_med_estr_na)
 colSums(is.na(test_med))
 
+nrow(test_med)
+
+test_med_estrato_df <- sf_to_df(test_med, fill = TRUE, unlist = NULL)
+saveRDS(test_med_estrato_df,"./stores/Medellín/rds_calculados/ESTRATO_test.rds")
+
+
 
 #Para train:
 
@@ -668,6 +674,10 @@ colSums(is.na(train_med))
 
 nrow(train_med)
 
+train_med_estrato_df <- sf_to_df(train_med, fill = TRUE, unlist = NULL)
+saveRDS(train_med_estrato_df,"./stores/Medellín/rds_calculados/ESTRATO_train.rds")
+
+
 #Revisión luego de imputar el Uso:
 colSums(is.na(train_med))
 colSums(is.na(test_med))
@@ -681,6 +691,8 @@ colSums(is.na(test_med))
 leaflet() %>% addTiles() %>% 
   addCircleMarkers(data=test_med %>% filter(is.na(test_med$MANZANA)),
                    color="red",label=test_med$ESTRATO)
+
+
 
 
 #### Uso del suelo: ----
@@ -748,6 +760,7 @@ test_med_uso_na$SUBCATEGOR <- NULL
 
 
 #Ejecución del Join con Max Dist = 50m
+
 #Para test:
 
 start_test = Sys.time()
@@ -761,14 +774,21 @@ colSums(is.na(test_med_uso_na))
 
 #Guardo en un DataFrame el resultado de la búsqueda de USOS
 test_med_uso_na_df <- sf_to_df(test_med_uso_na, fill = TRUE, unlist = NULL)
-saveRDS(test_med_uso_na_df,"./stores/Medellín/rds_calculados/USOS_NA_test.rds")
+saveRDS(test_med_uso_na_df,"./stores/Medellín/rds_calculados/USOS_test_NA.rds")
 
 colSums(is.na(test_med))
 test_med <- rbind(test_med_uso_ok,test_med_uso_na)
 colSums(is.na(test_med))
 
+nrow(test_med)
+
+test_med_usos_df <- sf_to_df(test_med, fill = TRUE, unlist = NULL)
+saveRDS(test_med_usos_df,"./stores/Medellín/rds_calculados/USOS_test.rds")
+
+
 
 #Ejecución del Join con Max Dist = 50m
+
 #Para Train:
 
 start_train = Sys.time()
@@ -789,6 +809,12 @@ saveRDS(train_med_uso_na_df,"./stores/Medellín/rds_calculados/USOS_NA_train.rds
 colSums(is.na(train_med))
 train_med <- rbind(train_med_uso_ok,train_med_uso_na)
 colSums(is.na(train_med))
+
+nrow(train_med)
+
+train_med_usos_df <- sf_to_df(train_med, fill = TRUE, unlist = NULL)
+saveRDS(train_med_usos_df,"./stores/Medellín/rds_calculados/USOS_train.rds")
+
 
 
 #Revisión luego de imputar el Uso:
@@ -896,6 +922,11 @@ colSums(is.na(test_med))
 test_med <- rbind(test_med_mzn_ok,test_med_mzn_na)
 colSums(is.na(test_med))
 
+nrow(test_med)
+
+test_med_mzn_df <- sf_to_df(test_med, fill = TRUE, unlist = NULL)
+saveRDS(test_med_mzn_df,"./stores/Medellín/rds_calculados/MZN_test.rds")
+
 
 #Para train:
 
@@ -912,9 +943,12 @@ saveRDS(train_med_mzn_na_df,"./stores/Medellín/rds_calculados/MZN_train_NA.rds"
 
 colSums(is.na(train_med))
 train_med <- rbind(train_med_mzn_ok,train_med_mzn_na)
-colSums(is.na(test_med))
+colSums(is.na(train_med))
 
-nrow(test_med)
+nrow(train_med)
+
+train_med_mzn_df <- sf_to_df(train_med, fill = TRUE, unlist = NULL)
+saveRDS(train_med_mzn_df,"./stores/Medellín/rds_calculados/MZN_train.rds")
 
 #Revisión luego de imputar el Uso:
 colSums(is.na(train_med))
