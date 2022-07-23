@@ -330,10 +330,17 @@ train_prop_sf$description[18]
                                             
                                            
 
-#Se crea un patrón para extraer el área medida en metro cuadrado de la vivienda, de la variable descripción
+#Se crean patrones para extraer el área medida en metro cuadrado de la vivienda, de la variable descripción
 
-x = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts" ## patrón
 
+patron1 = "[:space:]+[:digit:]+[:space:]+[:punct:]+[:digit:]+[:space:]+mt2"
+patron2 = "[:space:]+[:digit:]+mt2" ## pattern
+patron3 = "[:space:]+[:digit:]+[:space:]+m2" ## pattern
+patron4 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+[:space:]+mt2" ## pattern
+patron5 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+mt2" ## pattern
+patron6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2" ## pattern
+patron7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+mt2" ## pattern
+patron8 = "[:space:]+[:digit:]+[:space:]+m2" ## pattern
 
 str_locate_all(string = train_prop$description[28] , pattern = x) ## detectar patrón
 
