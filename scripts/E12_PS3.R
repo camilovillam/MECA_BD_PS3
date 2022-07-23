@@ -1070,18 +1070,84 @@ train_med$dist_park <- min_dist_parkm_train
 
 #### PENDIENTE: Información de Predios Medellín ----
 
+### Por ahora, no parece muy prometedor...
+
 #Puede contener valor promedio de m2, explorar
 
 predios_med <- import("./stores/Medellín/informacion_predios.csv")
 colnames(predios_med)
 
-#Explorar diccionario.
-#Pensar en cómo promediar o ponderar Avalúo por manzana.
-#Intentar un Join con la base de datoss
-#Revisar también No propietarios
+ubic_predios_med <- import("./stores/Medellín/UBICACION_PREDIO.csv")
+colnames(ubic_predios_med)
 
-#Combinar con la parte de datos de Construcción? Ej. área, propietarios?
-#O de estadísticas por manzana.
+
+nrow(predios_med)
+nrow(ubic_predios_med)
+
+pred_med <- left_join(ubic_predios_med,predios_med, by="CBML")
+nrow(pred_med)
+
+table(pred_med$UsoPredial,pred_med$DESTINACION)
+
+skim(predios_med)
+
+predios_med$Cod_MANZ <- substr(predios_med$CBML,1,7)
+
+table(predios_med$UsoPredial)
+
+#Creo que los valores de USO  1 y 10 me sirven, entiendo que son 
+#residenciales y complementarios
+
+agreg_predios_med <- predios_med %>% 
+  group_by(COBAMA,UsoPredial) %>%
+  summarize(Avaluo_prom=mean(AvaluoTotal),
+            Num_pred=n())
+
+
+
+vmg_manz_med <- read_sf("./stores/Medellín/shp_VMG_MANZANA_INFO/VMG_MANZANA_INFO.shp")
+
+colnames(vmg_manz_med)
+head(vmg_manz_med)
+
+vmg_manz_med_df <- sf_to_df(vmg_manz_med, fill = TRUE, unlist = NULL)
+rm(vmg_manz_med)
+vmg_manz_med_df<- filter(vmg_manz_med_df,vmg_manz_med_df$DESTINACIO=="Residencial")
+head(vmg_manz_med_df)
+colnames(vmg_manz_med_df)
+vmg_manz_med_df<- vmg_manz_med_df[,-(13:20)]
+nrow(vmg_manz_med_df)
+vmg_manz_med_df<- vmg_manz_med_df[!duplicated(vmg_manz_med_df), ]
+nrow(vmg_manz_med_df)
+head(vmg_manz_med_df)
+
+
+colnames(agreg_predios_med)
+
+
+pred_med <- left_join(vmg_manz_med_df,agreg_predios_med,by="COBAMA")
+nrow(pred_med)
+pred_med_res <- filter(pred_med,pred_med$UsoPredial==1)
+nrow(pred_med_res)
+
+pred_med_res$Avaluo_propiet <- pred_med_res$Avaluo_prom / pred_med_res$CANT_PROPI
+
+head(pred_med)
+table(pred_med_res$UsoPredial)
+colnames(pred_med_res)
+
+nrow(test_med)
+colnames(test_med)
+unique(test_med$MANZANA)
+
+test_med$COBAMA <- test_med$MANZANA
+
+test_med_aval <- left_join(test_med,pred_med_res,by="COBAMA")
+
+nrow(test_med_aval)
+colnames(test_med_aval)
+colSums(is.na(test_med_aval))
+
 
 
 ### PENDIENTE (EXPERIMENTAL) OBSERVATORIO INMOBILIARIO DE MEDELLÍN ----
@@ -1099,11 +1165,79 @@ st_layers("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml")
 
 
 OIME_2022_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml",layer="Apartamentos")
-OIME_2021 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="APARTAMENTOS USADOS.xlsx")
-OIME_2020 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml")
-OIME_2019 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml",layer="APARTAMENTOS.xlsx")
-OIME_2018 <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml")
+OIME_2022_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2022.kml",layer="Casas")
+OIME_2021_apts_us <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="APARTAMENTOS USADOS.xlsx")
+OIME_2021_apts_nuev <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="APARTAMENTOS NUEVOS.xlsx")
+OIME_2021_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2021.kml",layer="CASAS.xlsx")
+OIME_2020_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml", layer="APARTAMENTOS.xlsx")
+OIME_2020_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2020.kml", layer="CASAS.xlsx")
+OIME_2019_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml",layer="APARTAMENTOS.xlsx")
+OIME_2019_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2019.kml",layer="CASAS.xlsx")
+OIME_2018_apts <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml", layer="APARTAMENTOS.xlsx")
+OIME_2018_casas <- read_sf("./stores/Medellín/OIME_ofertas/Ofertas de Ventas 2018.kml", layer="CASAS.xlsx")
 
+OIME_2022_apts$YEAR <- 2022
+OIME_2022_casas$YEAR <- 2022
+OIME_2021_apts_us$YEAR <- 2021
+OIME_2021_apts_nuev$YEAR <- 2021
+OIME_2021_casas$YEAR <- 2021
+OIME_2020_apts$YEAR <- 2020
+OIME_2020_casas$YEAR <- 2020
+OIME_2019_apts$YEAR <- 2019
+OIME_2019_casas$YEAR <- 2019
+OIME_2018_apts$YEAR <- 2018
+OIME_2018_casas$YEAR <- 2018
+
+
+OIME <- rbind(
+  OIME_2022_apts,
+  OIME_2022_casas,
+  OIME_2021_apts_us,
+  OIME_2021_apts_nuev,
+  OIME_2021_casas,
+  OIME_2020_apts,
+  OIME_2020_casas,
+  OIME_2019_apts,
+  OIME_2019_casas,
+  OIME_2018_apts,
+  OIME_2018_casas)
+
+leaflet() %>% addTiles() %>% 
+  addCircleMarkers(data=OIME,popup = OIME$Description, color ="green")
+
+
+OIME <- st_join(OIME,estratos_med[,c('MANZANA','ESTRATO')])
+
+colSums(is.na(OIME))
+
+OIME$Descripcion <- gsub("<br>","|",OIME$Descripcion)
+
+colnames(OIME)
+
+OIME$Description <- NULL
+
+OIME_info  <- data.frame(apply(OIME[ , colnames(OIME)], 1, paste, collapse = "|" ))
+
+export(OIME_info,"./stores/Medellín/OIME_ofertas/OIME_info.xlsx")
+
+#SE SEPARA TEXTO EN COLUMNAS EN EXCEL; EN R, FALLA Y ES COMPLICADO!!!!
+
+OIME2 <- import("./stores/Medellín/OIME_ofertas/OIME_info_proc.xlsx")
+
+colnames(OIME)
+OIME$Descripcion[1]
+
+OIME_colnames <- c('ID', 'Geometry', 'Year', 'COBAMA', 'Estrato',
+                   'Fecha_ini','Tipo_oferta','Tipo_predio','Estado','Barrio','Estrato2',
+                   'Area_priv','Area_lot','Valor_com','Valor_m2','long2','lat2')
+
+OIME_colnames
+ensayo <- data.frame(OIME_info[1:5,])
+
+ensayo <- separate(ensayo,col=1, into=OIME_colnames, sep="|")
+warnings()
+
+?separate
 
 leaflet() %>% addTiles() %>% 
   addCircleMarkers(data=OIME_2022,popup = OIME_2022$Description, color ="green") %>% 
@@ -1111,6 +1245,7 @@ leaflet() %>% addTiles() %>%
   addCircleMarkers(data=OIME_2020,popup = OIME_2020$Description, color ="blue") %>% 
   addCircleMarkers(data=OIME_2019,popup = OIME_2019$Description, color ="orange")%>%
   addCircleMarkers(data=OIME_2018,popup = OIME_2018$Description, color ="black")
+
 
 
 
