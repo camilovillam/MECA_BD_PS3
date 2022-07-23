@@ -286,6 +286,11 @@ class(train_prop_sf)
 leaflet() %>% addTiles() %>% addCircles(data=train_prop)
 
 
+##Ahora se va a extraer datos del texto
+
+#Se crea un patrón para extraer el área medida en metro cuadrado de la vivienda, de la variable descripción
+
+x = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+M2" ## pattrón
 ##3.2. Imputación de datos----
 
 
