@@ -822,15 +822,6 @@ colSums(is.na(train_med))
 colSums(is.na(test_med))
 
 
-ggplot()+
-  geom_sf(data=manz_med_pobl,fill = NA) +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
 
 #### Manzanas del DANE: ----
 
