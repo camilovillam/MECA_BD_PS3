@@ -1222,32 +1222,92 @@ export(OIME_info,"./stores/Medellín/OIME_ofertas/OIME_info.xlsx")
 
 #SE SEPARA TEXTO EN COLUMNAS EN EXCEL; EN R, FALLA Y ES COMPLICADO!!!!
 
-OIME2 <- import("./stores/Medellín/OIME_ofertas/OIME_info_proc.xlsx")
+OIME <- import("./stores/Medellín/OIME_ofertas/OIME_info_proc.xlsx")
 
 colnames(OIME)
-OIME$Descripcion[1]
 
-OIME_colnames <- c('ID', 'Geometry', 'Year', 'COBAMA', 'Estrato',
-                   'Fecha_ini','Tipo_oferta','Tipo_predio','Estado','Barrio','Estrato2',
-                   'Area_priv','Area_lot','Valor_com','Valor_m2','long2','lat2')
+#PENDIENTE TERMINAR SI ALGO:
+# OIME_colnames <- c('ID', 'Geometry', 'Year', 'COBAMA', 'Estrato',
+#                    'Fecha_ini','Tipo_oferta','Tipo_predio','Estado','Barrio','Estrato2',
+#                    'Area_priv','Area_lot','Valor_com','Valor_m2','long2','lat2')
+# 
+# OIME_colnames
+# ensayo <- data.frame(OIME_info[1:5,])
+# 
+# ensayo <- separate(ensayo,col=1, into=OIME_colnames, sep="|")
+# warnings()
+# 
+# ?separate
 
-OIME_colnames
-ensayo <- data.frame(OIME_info[1:5,])
+#PENDIENTE AJUSTAR INFLACION
 
-ensayo <- separate(ensayo,col=1, into=OIME_colnames, sep="|")
-warnings()
+#Promedios
 
-?separate
+agreg_OIME_mzn <- OIME %>% 
+  group_by(COBAMA) %>%
+  summarize(Media_m2_mzn=mean(Valor_m2),
+            Mediana_m2_mzn=median(Valor_m2))
 
-leaflet() %>% addTiles() %>% 
-  addCircleMarkers(data=OIME_2022,popup = OIME_2022$Description, color ="green") %>% 
-  addCircleMarkers(data=OIME_2021,popup = OIME_2021$Description, color ="red") %>% 
-  addCircleMarkers(data=OIME_2020,popup = OIME_2020$Description, color ="blue") %>% 
-  addCircleMarkers(data=OIME_2019,popup = OIME_2019$Description, color ="orange")%>%
-  addCircleMarkers(data=OIME_2018,popup = OIME_2018$Description, color ="black")
+agreg_OIME_barr <- OIME %>% 
+  group_by(Barrio) %>%
+  summarize(Media_m2_barr=mean(Valor_m2),
+            Mediana_m2_barr=median(Valor_m2))
+
+agreg_OIME_estr <- OIME %>% 
+  group_by(Estrato) %>%
+  summarize(Media_m2_estr=mean(Valor_m2),
+            Mediana_m2_estr=median(Valor_m2))
+
+test_med$COBAMA <- test_med$MANZANA
+train_med$COBAMA <- train_med$MANZANA
+test_med$Estrato <- test_med$ESTRATO
+train_med$Estrato <- train_med$ESTRATO
+test_med$Barrio <- test_med$NOMBRE.x
+train_med$Barrio <- train_med$NOMBRE.x
+
+test_med <- left_join(test_med,agreg_OIME_mzn,by="COBAMA")
+train_med <- left_join(train_med,agreg_OIME_mzn,by="COBAMA")
+
+test_med <- left_join(test_med,agreg_OIME_barr,by="Barrio")
+train_med <- left_join(train_med,agreg_OIME_barr,by="Barrio")
+
+test_med <- left_join(test_med,agreg_OIME_estr,by="Estrato")
+train_med <- left_join(train_med,agreg_OIME_estr,by="Estrato")
+
+test_med <- test_med[!duplicated(test_med), ]
+
+#Case: mejor avalúo disponible: Media
+test_med$mejor_val_m2_mean  <-  case_when(
+    !is.na(test_med$Media_m2_mzn.x) ~ as.double(test_med$Media_m2_mzn.x),
+    !is.na(test_med$Media_m2_barr.x) ~ as.double(test_med$Media_m2_barr.x),
+    !is.na(test_med$Media_m2_estr) ~ as.double(test_med$Media_m2_estr))
+
+train_med$mejor_val_m2_mean  <-  case_when(
+  !is.na(train_med$Media_m2_mzn.x) ~ as.double(train_med$Media_m2_mzn.x),
+  !is.na(train_med$Media_m2_barr.x) ~ as.double(train_med$Media_m2_barr.x),
+  !is.na(train_med$Media_m2_estr) ~ as.double(train_med$Media_m2_estr))
 
 
+#Case: mejor avalúo disponible: Mediana
+test_med$mejor_val_m2_median  <-  case_when(
+  !is.na(test_med$Mediana_m2_mzn.x) ~ as.double(test_med$Mediana_m2_mzn.x),
+  !is.na(test_med$Mediana_m2_barr.x) ~ as.double(test_med$Mediana_m2_barr.x),
+  !is.na(test_med$Mediana_m2_estr) ~ as.double(test_med$Mediana_m2_estr))
 
+train_med$mejor_val_m2_median  <-  case_when(
+  !is.na(train_med$Mediana_m2_mzn.x) ~ as.double(train_med$Mediana_m2_mzn.x),
+  !is.na(train_med$Mediana_m2_barr.x) ~ as.double(train_med$Mediana_m2_barr.x),
+  !is.na(train_med$Mediana_m2_estr) ~ as.double(train_med$Mediana_m2_estr))
+
+
+test_med$val_tot_mean <- test_med$mejor_val_m2_mean * test_med$surface_total
+test_med$val_tot_median <- test_med$mejor_val_m2_median * test_med$surface_total
+train_med$val_tot_mean <- train_med$mejor_val_m2_mean * train_med$surface_total
+train_med$val_tot_median <- train_med$mejor_val_m2_median * train_med$surface_total
+
+
+colSums(is.na(test_med))
+colSums(is.na(train_med))
 
 
 
