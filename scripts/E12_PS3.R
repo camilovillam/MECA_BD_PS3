@@ -1494,18 +1494,18 @@ split1 <- createDataPartition(train_med$price, p = .7)[[1]]
 length(split1) 
 
 other <- train_med[-split1,]
-Tr_train <- train_med[split1,]
+Tr_train_med <- train_med[split1,]
 
 split2 <- createDataPartition(other$price, p = 1/3)[[1]]
 
-Tr_eval <- other[ split2,]
-Tr_test <- other[-split2,]
+Tr_eval_med <- other[ split2,]
+Tr_test_med <- other[-split2,]
 
-nrow(Tr_train)
-nrow(Tr_eval)
-nrow(Tr_test)
+nrow(Tr_train_med)
+nrow(Tr_eval_med)
+nrow(Tr_test_med)
 
-nrow(Tr_train)+nrow(Tr_eval)+nrow(Tr_test)==nrow(train_med)
+nrow(Tr_train_med)+nrow(Tr_eval_med)+nrow(Tr_test_med)==nrow(train_med)
 
 rm(other)
 
@@ -1537,49 +1537,64 @@ decision_compra <- function(x,y) case_when(y > 0 ~ x,
 
 
 
+###Preparación del PC, cálculos en paralelo ----
+
+n_cores <- detectCores()
+print(paste("Mi PC tiene", n_cores, "nucleos"))
+
+# Vamos a usar n_cores - 2 procesadores para esto
+cl <- makePSOCKcluster(n_cores-2) 
+registerDoParallel(cl)
+
+##Ejecutar...
+
+# Liberamos nuestros procesadores
+stopCluster(cl)
+
+
 
 
 ### Modelos básicos ----
 
-colSums(is.na(Tr_train))
+colSums(is.na(Tr_train_med))
 
 
 reg1 <- lm(price ~ factor(ESTRATO),
-           data=train_med)
+           data=Tr_train_med)
 
 reg2 <- lm(price ~ bedrooms + factor(ESTRATO), 
-           data=train_med)
+           data=Tr_train_med)
 
 reg3 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO), 
-           data=train_med)
+           data=Tr_train_med)
 
 reg4 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + surface_total, 
-           data=train_med)
+           data=Tr_train_med)
 
 reg5 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total, 
-           data=train_med)
+           data=Tr_train_med)
 
 
 reg6 <- lm(price ~ bedrooms + ESTRATO + COD_CAT_US + COD_SUBCAT, 
-           data=train_med)
+           data=Tr_train_med)
  
 reg7 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total + factor(COD_SUBCAT), 
-           data=train_med)
+           data=Tr_train_med)
 
 reg8 <- lm(price ~ val_tot_median + surface_total + factor(ESTRATO) + bedrooms + 
              factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
              dist_park,
-           data=train_med)
+           data=Tr_train_med)
 
 reg9 <- lm(price ~val_tot_area_OIME + area_OIME_median + factor(ESTRATO) + bedrooms + 
              factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
              dist_park,
-           data=train_med)
+           data=Tr_train_med)
 
 reg10 <- lm(price ~ val_tot_area_OIME + area_OIME_median + factor(ESTRATO) + bedrooms + bathrooms +
              factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
              dist_park,
-           data=train_med)
+           data=Tr_train_med)
 
 
 mean(reg8$residuals^2)
@@ -1632,6 +1647,8 @@ reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw,
 stargazer(reg1,reg2,reg3,type="text")
 
 
+
+
 #Definición del control (a usarse en los demás modelos)
 fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
 
@@ -1646,7 +1663,7 @@ control <- trainControl(method = "cv", number = 5,
 
 ###Modelo árbol básico (CART) ----
 
-train_med_fact <- Tr_train
+train_med_fact <- Tr_train_med
 train_med_fact$ESTRATO <- factor(train_med_fact$ESTRATO)
 train_med_fact$COD_CAT_US <- factor(train_med_fact$COD_CAT_US)
 train_med_fact$COD_SUBCAT <- factor(train_med_fact$COD_SUBCAT)
@@ -1672,7 +1689,7 @@ form_tree <- as.formula("price ~
 
 tree <- train(
   form_tree,
-  data = Tr_train,
+  data = Tr_train_med, #Debería ser la de las variables con Factores?
   method = "rpart",
   trControl = control,
   parms=list(split='Gini'),
@@ -1684,23 +1701,8 @@ tree <- train(
 
 tree
 rpart.plot::prp(tree$finalModel)
-pred_tree <- predict(tree,Tr_test)
+pred_tree <- predict(tree,Tr_test_med)
 pred_tree_df <- data.frame(pred_tree)
-
-
-###Preparación del PC, cálculos en paralelo ----
-
-n_cores <- detectCores()
-print(paste("Mi PC tiene", n_cores, "nucleos"))
-
-# Vamos a usar n_cores - 2 procesadores para esto
-cl <- makePSOCKcluster(n_cores-2) 
-registerDoParallel(cl)
-
-##Ejecutar...
-
-# Liberamos nuestros procesadores
-stopCluster(cl)
 
 
 
@@ -1720,7 +1722,7 @@ start_xg <- Sys.time()
 
 xgboost <- train(
   form_xgboost,
-  data = Tr_train,
+  data = Tr_train_med,
   method = "xgbTree",
   trControl = control,
   na.action  = na.pass,
@@ -1730,16 +1732,16 @@ xgboost <- train(
 xgboost
 
 #Cálculo del índice desempeño del modelo:
-pred_xgb <- predict(xgboost,Tr_test)
+pred_xgb <- predict(xgboost,Tr_test_med)
 pred_xgb_df <- data.frame(pred_xgb)
 
 #Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test) - nrow(pred_xgb_df) #Dif. entre la base y el num de predicciones
-colSums(is.na(Tr_test)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
+nrow(Tr_test_med) - nrow(pred_xgb_df) #Dif. entre la base y el num de predicciones
+colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
 
 #Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_xgb_df <- cbind(filter(Tr_test[,c("property_id","price","COD_CAT_US")],
-                            !(is.na(Tr_test$COD_CAT_US))), #Filtra obs de la var con NAs
+pred_xgb_df <- cbind(filter(Tr_test_med[,c("property_id","price","COD_CAT_US")],
+                            !(is.na(Tr_test_med$COD_CAT_US))), #Filtra obs de la var con NAs
                      pred_xgb_df)
 pred_xgb_df$geometry <- NULL #Elimino geometría
 pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
@@ -1758,8 +1760,8 @@ end_xg <- Sys.time()
 start_xg-end_xg
 
 
-nrow(Tr_test)-nrow(pred_tree_df)
-colSums(is.na(Tr_test))
+nrow(Tr_test_med)-nrow(pred_tree_df)
+colSums(is.na(Tr_test_med))
 
 
 
@@ -1785,7 +1787,7 @@ form_tree2 <- as.formula("price ~
 
 tree2 <- train(
   form_tree2,
-  data = Tr_train,
+  data = Tr_train_med,
   method = "rpart",
   trControl = control,
   parms=list(split='Gini'),
@@ -1797,7 +1799,7 @@ tree2 <- train(
 
 tree2
 rpart.plot::prp(tree2$finalModel)
-pred_tree2 <- predict(tree2,Tr_test)
+pred_tree2 <- predict(tree2,Tr_test_med)
 pred_tree_df2 <- data.frame(pred_tree2)
 
 
@@ -1818,7 +1820,7 @@ start_xg <- Sys.time()
 
 xgboost2 <- train(
   form_xgboost2,
-  data = Tr_train,
+  data = Tr_train_med,
   method = "xgbTree",
   trControl = control,
   na.action  = na.pass,
@@ -1828,7 +1830,7 @@ xgboost2 <- train(
 
 
 xgboost2
-pred_xgb2 <- predict(xgboost2,Tr_test)
+pred_xgb2 <- predict(xgboost2,Tr_test_med)
 pred_xgb_df2 <- data.frame(pred_xgb2)
 
 end_xg <- Sys.time()
