@@ -484,6 +484,133 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
 
 
 
+## 5.3. FEATURES DE OSM: ----
+
+### 5.3.1. Estaciones transporte público Bogotá: ----
+
+## objeto osm
+tpublbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="public_transport" , value="station") 
+
+tpublbog_sf <- tpublbog %>% osmdata_sf()
+tpublbog_sf
+tpublbog_station  <-  tpublbog_sf$osm_points
+
+#leaflet() %>% addTiles() %>% addCircleMarkers(data=tpublbog_station)
+
+## Distancia de las viviendas a las estaciones
+dist_tpublb_test  <-  st_distance(x=test_bog, y=tpublbog_station)
+dist_tpublb_train  <-  st_distance(x=train_bog, y=tpublbog_station)
+
+## Distancia mínima
+min_dist_tpublb_test  <-  apply(dist_tpublb_test,1,min)
+min_dist_tpublb_train  <-  apply(dist_tpublb_train,1,min)
+
+test_bog$dist_tpubl <- min_dist_tpublb_test
+train_bog$dist_tpubl <- min_dist_tpublb_train
+
+
+### 5.3.2. Hospitales y clínicas en Bogotá: ----
+
+## objeto osm
+hospbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="amenity" , value="hospital")
+
+clinbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="amenity" , value="clinic") 
+
+hospbog_sf <- hospbog %>% osmdata_sf()
+clinbog_sf <- clinbog %>% osmdata_sf()
+
+hospbog_sf
+clinbog_sf
+
+hosp_bog  <-  hospbog_sf$osm_points
+clin_bog  <-  clinbog_sf$osm_points
+
+colnames(hosp_bog)
+colnames(clin_bog)
+compare_df_cols(hosp_bog, clin_bog)
+
+nrow(hosp_bog)
+nrow(clin_bog)
+nrow(hosp_bog) + nrow(clin_bog)
+
+#Se unen las filas por columnas comunes de clínicas y hospitales
+hosp_bog <- rbind(hosp_bog[intersect(colnames(hosp_bog), colnames(clin_bog))],
+                  clin_bog[intersect(colnames(hosp_bog), colnames(clin_bog))])
+
+nrow(hosp_bog)
+colnames(hosp_bog)
+
+#leaflet() %>% addTiles() %>% 
+#  addCircleMarkers(data=hosp_bog,color="blue")
+
+## Distancia de las viviendas a clínicas u hospitales
+dist_hospb_test  <-  st_distance(x=test_bog, y=hosp_bog)
+dist_hospb_train  <-  st_distance(x=train_bog, y=hosp_bog)
+
+## Distancia mínima
+min_dist_hospb_test  <-  apply(dist_hospb_test,1,min)
+min_dist_hospb_train  <-  apply(dist_hospb_train,1,min)
+
+test_bog$dist_hosp <- min_dist_hospb_test
+train_bog$dist_hosp <- min_dist_hospb_train
+
+
+### 5.3.3. Centros comerciales en Bogotá: ----
+
+## objeto osm
+ccombog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="shop" , value="mall") 
+
+ccombog_sf <- ccombog %>% osmdata_sf()
+ccomerc_bog  <-  ccombog_sf$osm_points
+
+#leaflet() %>% addTiles() %>% addCircleMarkers(data=ccomerc_bog)
+
+## Distancia de las viviendas a Centros comerciales
+dist_ccomercb_test  <-  st_distance(x=test_bog, y=ccomerc_bog)
+dist_ccomercb_train  <-  st_distance(x=train_bog, y=ccomerc_bog)
+
+## Distancia mínima
+min_dist_ccomercb_test  <-  apply(dist_ccomercb_test,1,min)
+min_dist_ccomercb_train  <-  apply(dist_ccomercb_train,1,min)
+
+test_bog$dist_ccomerc <- min_dist_ccomercb_test
+train_bog$dist_ccomerc <- min_dist_ccomercb_train
+
+
+### 5.3.4. Parques en Bogotá: ----
+
+## objeto osm
+parkbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="leisure" , value="park")
+
+parkbog_sf <- parkbog %>% osmdata_sf()
+park_bog  <-  parkbog_sf$osm_points
+
+#leaflet() %>% addTiles() %>% addCircleMarkers(data=park_bog)
+
+## Distancia de las viviendas a parques
+dist_parkb_test  <-  st_distance(x=test_bog, y=park_bog)
+dist_parkb_train  <-  st_distance(x=train_bog, y=park_bog)
+
+## Distancia mínima
+min_dist_parkb_test  <-  apply(dist_parkb_test,1,min)
+min_dist_parkb_train  <-  apply(dist_parkb_train,1,min)
+
+test_bog$dist_park <- min_dist_parkb_test
+train_bog$dist_park <- min_dist_parkb_train
+
+
+colSums(is.na(train_bog))
+colSums(is.na(test_bog))
+
+
+
+
+
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 6. MODELO MEDELLÍN ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
