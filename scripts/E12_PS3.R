@@ -635,7 +635,7 @@ colSums(is.na(test_med))
 # 
 # train_med <- st_join(train_med,estratos_med[,c('MANZANA','ESTRATO')])
 # test_med <- st_join(test_med,estratos_med[,c('MANZANA','ESTRATO')])
-# 
+
 # colSums(is.na(train_med))
 # colSums(is.na(test_med))
 # 
@@ -1106,14 +1106,68 @@ OIME <- import("./stores/Medellín/OIME_ofertas/OIME_info_proc.xlsx")
 
 colnames(OIME)
 
+#Expresiones regulares para ajustar los barrios:
+
+#En train: 6645 barrios NA
+#En test: 1196 barrios NA
+
+#Ideas:
+#Todo mayusc
+#Quitar tildes
+#Quitar espacios
+
+OIME$BARRIO <- gsub(""," NO.", OIME$Barrio)
+
 OIME$BARRIO <- gsub(" # "," NO.", OIME$Barrio)
 OIME$Barrio <- NULL
 
-test_med$BARRIO <- toupper(test_med$BARRIO)
-train_med$BARRIO <- toupper(train_med$BARRIO)
+OIME$BARRIO <- chartr("ÁÉÍÓÚ", "AEIOU", toupper(OIME$BARRIO))
+test_med$BARRIO <- chartr("ÁÉÍÓÚ", "AEIOU", toupper(test_med$BARRIO))
+train_med$BARRIO <- chartr("ÁÉÍÓÚ", "AEIOU", toupper(train_med$BARRIO))
+
+OIME$BARRIO <- gsub("[[:space:]]", "", OIME$BARRIO)
+test_med$BARRIO <- gsub("[[:space:]]", "", test_med$BARRIO)
+train_med$BARRIO <- gsub("[[:space:]]", "", train_med$BARRIO)
 
 OIME$ESTRATO <- OIME$Estrato
 OIME$Estrato <- NULL
+
+
+train_barrios_NA <- filter(train_med,is.na(train_med$Media_m2_barr.y))
+barrios_NA <- data.frame(table(train_barrios_NA$BARRIO))
+
+#Corrección de los nombres de barrios más representativos:
+
+OIME$BARRIO  <-  case_when(
+  OIME$BARRIO=="LOMADELOSBERNAL" ~ "LALOMADELOSBERNAL",
+  OIME$BARRIO=="ZONADEEXPANSIONBELENRINCON" ~ "AREADEEXPANSIONBELENRINCON",
+  OIME$BARRIO=="CABECERASANANTONIODEPRADO" ~ "SANANTONIODEPRADO",
+  OIME$BARRIO=="ELESTADIO" ~ "ESTADIO",
+  OIME$BARRIO=="ZONAEXPANSIONPAJARITO" ~ "AREADEEXPANSIONPAJARITO",
+  OIME$BARRIO=="AEROPARQUEJUANPABLOII" ~ "PARQUEJUANPABLOII",
+  OIME$BARRIO=="NUEVAVILLADEABURRA" ~ "NUEVAVILLADELABURRA",
+  OIME$BARRIO=="BARRIODEJESUS" ~ "BARRIOSDEJESUS",
+  OIME$BARRIO=="CATALUNA" ~ "CATALUÑA",
+  OIME$BARRIO=="ZONAEXPANSIONSANANTONIO" ~ "AREADEEXPANSIONSANANTONIODEPRADO",
+  OIME$BARRIO=="SUBURB.SANJOSEDELMANZANILLO" ~ "SANJOSEDELMANZANILLO",
+  OIME$BARRIO=="BOLIVARIANA" ~ "U.P.B",
+  OIME$BARRIO=="LAPINUELA" ~ "LAPIÑUELA",
+  TRUE ~ OIME$BARRIO
+)
+
+
+
+#Mejorar el Avalúo - Ajuste por inflación?
+
+test_med$año_anunc <- str_sub(test_med$start_date,1,4)
+table(test_med$año_anunc)
+
+train_med$año_anunc <- str_sub(train_med$start_date,1,4)
+table(train_med$año_anunc)
+
+#Del observatorio tengo observaciones entre 2018-2022.
+#Cae dentro del rango de fechas, en principio no veo necesario ajustar
+#por inflación.
 
 
 #PENDIENTE TERMINAR SI ALGO:
@@ -1128,6 +1182,21 @@ OIME$Estrato <- NULL
 # warnings()
 # 
 # ?separate
+
+#Comparar BARRIOS:
+
+#Resumen de diferencias
+all_equal(barrios,barrios_j)
+comparedf(barrios,barrios_j)
+
+#Comparación de variables (columnas)
+compare_df_cols(barrios,barrios_j)
+
+#Comparación detallada:
+comparacion_barrios <- summary(comparedf(barrios,barrios_j))
+
+
+
 
 #PENDIENTE AJUSTAR INFLACION
 
@@ -1162,6 +1231,8 @@ train_med <- left_join(train_med,agreg_OIME_estr,by="ESTRATO")
 
 colSums(is.na(test_med))
 colSums(is.na(train_med))
+
+
 
 
 #Case: mejor avalúo disponible: Media
@@ -1209,7 +1280,72 @@ sapply(train_subset, mean)
 
 
 
-## 6.5. REGRESIONES ----
+###Imputar área en m2, con la mediana ----
+
+#1) Del observatorio
+#2) De la BD
+#3) Ambos
+
+#Por ahora, de la OIME
+agr_area_OIME_mzn <- OIME %>% 
+  group_by(COBAMA) %>%
+  summarize(area_mzn_median=median(Area_priv))
+
+agr_area_OIME_barr <- OIME %>% 
+  group_by(BARRIO) %>%
+  summarize(area_barr_median=median(Area_priv))
+
+agr_area_OIME_estr <- OIME %>% 
+  group_by(ESTRATO) %>%
+  summarize(area_estr_median=median(Area_priv))
+
+
+test_med <- left_join(test_med,agr_area_OIME_mzn,by="COBAMA")
+train_med <- left_join(train_med,agr_area_OIME_mzn,by="COBAMA")
+
+test_med <- left_join(test_med,agr_area_OIME_barr,by="BARRIO")
+train_med <- left_join(train_med,agr_area_OIME_barr,by="BARRIO")
+
+test_med <- left_join(test_med,agr_area_OIME_estr,by="ESTRATO")
+train_med <- left_join(train_med,agr_area_OIME_estr,by="ESTRATO")
+
+colSums(is.na(test_med))
+colSums(is.na(train_med))
+
+
+#Case: área m2: Mediana
+test_med$area_OIME_median  <-  case_when(
+  !is.na(test_med$surface_total) ~ test_med$surface_total,
+  !is.na(test_med$area_mzn_median) ~ as.double(test_med$area_mzn_median),
+  !is.na(test_med$area_barr_median) ~ as.double(test_med$area_barr_median),
+  !is.na(test_med$area_estr_median) ~ as.double(test_med$area_estr_median))
+
+train_med$area_OIME_median  <-  case_when(
+  !is.na(train_med$surface_total) ~ train_med$surface_total,
+  !is.na(train_med$area_mzn_median) ~ as.double(train_med$area_mzn_median),
+  !is.na(train_med$area_barr_median) ~ as.double(train_med$area_barr_median),
+  !is.na(train_med$area_estr_median) ~ as.double(train_med$area_estr_median))
+
+
+colSums(is.na(test_med))
+colSums(is.na(train_med))
+
+test_med$val_tot_area_OIME <- test_med$mejor_val_m2_median * test_med$area_OIME_median
+train_med$val_tot_area_OIME <- train_med$mejor_val_m2_median * train_med$area_OIME_median
+
+
+colSums(is.na(test_med))
+colSums(is.na(train_med))
+
+
+train_subset <- train_med[,c("description","price","val_tot_mean","val_tot_median","val_tot_area_OIME")]
+train_subset <- filter(train_subset,!(is.na(train_subset$val_tot_area_OIME)))
+train_subset$MSE_median_2 <- (train_subset$price - train_subset$val_tot_area_OIME)^2
+
+sapply(train_subset, mean)
+
+
+## 6.6. REGRESIONES ----
 
 ### PARTIR LAS BASES DE DATOS: TRAIN, EVAL, TEST.
 
@@ -1220,37 +1356,33 @@ sapply(train_subset, mean)
 # Tr_eval: Evaluar, ajustar y refinar el modelo
 # Tr_test: Probar el modelo
 
-#Balance inicial
-prop.table(table(train_h$Pobre))
 
-### Generación de particiones ----
+# Revisar: Generamos las particiones
 set.seed(100)
-split1 <- createDataPartition(train_h$Pobre, p = .7)[[1]]
-length(split1)
+split1 <- createDataPartition(train_med$price, p = .7)[[1]]
+length(split1) 
 
-other <- train_h[-split1,]
-Tr_train <- train_h[split1,]
+other <- train_med[-split1,]
+Tr_train <- train_med[split1,]
 
-split2 <- createDataPartition(other$Pobre, p = 1/3)[[1]]
+split2 <- createDataPartition(other$price, p = 1/3)[[1]]
 
 Tr_eval <- other[ split2,]
 Tr_test <- other[-split2,]
 
-
-### Balance final ----
-prop.table(table(train_h$Pobre))
-prop.table(table(Tr_train$Pobre))
-prop.table(table(Tr_eval$Pobre))
-prop.table(table(Tr_test$Pobre))
-
 nrow(Tr_train)
+nrow(Tr_eval)
 nrow(Tr_test)
+
+nrow(Tr_train)+nrow(Tr_eval)+nrow(Tr_test)==nrow(train_med)
 
 rm(other)
 
 
-
 ### Modelos básicos ----
+
+colSums(is.na(Tr_train))
+
 
 reg1 <- lm(price ~ factor(ESTRATO),
            data=train_med)
@@ -1274,21 +1406,84 @@ reg6 <- lm(price ~ bedrooms + ESTRATO + COD_CAT_US + COD_SUBCAT,
 reg7 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total + factor(COD_SUBCAT), 
            data=train_med)
 
-reg8 <- lm(price ~ surface_total + bathrooms + factor(ESTRATO) + bedrooms + 
+reg8 <- lm(price ~ val_tot_median + surface_total + factor(ESTRATO) + bedrooms + 
              factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
              dist_park,
            data=train_med)
 
-reg9 <- lm(price ~ val_tot_median,
+reg9 <- lm(price ~val_tot_median_m2imput + m2_imput_OIME_median + factor(ESTRATO) + bedrooms + 
+             factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
+             dist_park,
            data=train_med)
 
-stargazer(reg8,type="text")
+reg10 <- lm(price ~ val_tot_median + surface_total + factor(ESTRATO) + bedrooms + bathrooms +
+             factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
+             dist_park,
+           data=train_med)
+
+
+mean(reg8$residuals^2)
+mean(reg9$residuals^2)
+mean(reg10$residuals^2)
+
+stargazer(reg8,reg9,reg10,type="text")
 
 stargazer(reg1,reg2,reg3,type="text")
 stargazer(reg4,reg5,type="text")
 stargazer(reg4,reg6,type="text")
 stargazer(reg6,reg7,type="text")
 
+
+
+########Pruebas con lagsarlm----
+
+install.packages("lagsarlmtree")
+library(lagsarlmtree)
+install.packages("spdep")
+library(spdep)
+
+Tr_train_sp <- as(Tr_train, "Spatial")
+
+Tr_train_neib <- dnearneigh(coordinates(Tr_train_sp), 0, 0.1, longlat = TRUE)
+
+listw <- nb2listw(Tr_train_neib, style="W", zero.policy = TRUE)
+
+# Prueba 1, saca error. Empty neighbour sets found.
+
+reg1<-lagsarlm(modelo1,data=Tr_train, listw=listw)
+reg2<-lagsarlm(modelo2,data=Tr_train, listw=listw)
+reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw)
+
+stargazer(reg1,reg2,reg3,type="text")
+
+# Prueba 2, Usando eigen valores. Funciona. --- probar después y revisar con manzanas porqu eno funciona
+
+ev <- eigenw(listw)
+W <- as(listw, "CsparseMatrix")
+trMatc <- trW(W, type="mult")
+
+
+reg1<-lagsarlm(modelo1,data=Tr_train, listw=listw,
+               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
+
+reg2<-lagsarlm(modelo2,data=Tr_train, listw=listw,
+               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
+
+reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw,
+               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
+
+
+stargazer(reg1,reg2,reg3,type="text")
+
+
+#Definición del control (a usarse en los demás modelos)
+fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
+
+control <- trainControl(method = "cv", number = 5,
+                        summaryFunction = fiveStats, 
+                        classProbs = TRUE,
+                        verbose=FALSE,
+                        savePredictions = T)
 
 
 #Árbol MED:
@@ -1300,24 +1495,31 @@ train_med_fact$ESTRATO <- factor(train_med_fact$ESTRATO)
 train_med_fact$COD_CAT_US <- factor(train_med_fact$COD_CAT_US)
 train_med_fact$COD_SUBCAT <- factor(train_med_fact$COD_SUBCAT)
 
+colnames(train_med_fact)
 
-form_tree <- as.formula("price ~ bedrooms + ESTRATO + COD_CAT_US + COD_SUBCAT")
+form_tree <- as.formula("price ~ 
+                        bedrooms + 
+                        ESTRATO + 
+                        COD_CAT_US + 
+                        COD_SUBCAT + 
+                        dist_metro + 
+                        dist_hosp + 
+                        dist_ccomerc + 
+                        dist_park + 
+                        area_OIME_median +
+                        mejor_val_m2_mean")
 
 
 #cp_alpha<-seq(from = 0, to = 0.1, length = 10)
 
 #Ensayo de tree con un control de internet:
 
-cvCtrl <- trainControl(method="repeatedcv", repeats = 2, classProbs = TRUE)
-
 tree <- train(
   form_tree,
-  data = train_med_fact,
+  data = Tr_train,
   method = "rpart",
-  trControl = cvCtrl,
-  na.action  = na.pass,
+  trControl = control,
   parms=list(split='Gini'),
-  controls=ctree_control(maxsurrogate=2),
   #tuneGrid = expand.grid(cp = cp alpha)#,
   tuneLength=200
   #preProcess = c("center", "scale")
@@ -1326,8 +1528,46 @@ tree <- train(
 tree
 rpart.plot::prp(tree$finalModel)
 pred_tree <- predict(tree,Tr_test)
-c_matr_tree <- confusionMatrix(Tr_test$Pobre,pred_tree,positive="Pobre")
-c_matr_tree
+
+
+###Preparación del PC, cálculos en paralelo ----
+
+n_cores <- detectCores()
+print(paste("Mi PC tiene", n_cores, "nucleos"))
+
+# Vamos a usar n_cores - 2 procesadores para esto
+cl <- makePSOCKcluster(n_cores) 
+registerDoParallel(cl)
+
+##Ejecutar...
+
+# Liberamos nuestros procesadores
+stopCluster(cl)
+
+
+
+###Modelo XGBoost ----
+
+form_xgboost <- form_tree
+
+grid_default <- expand.grid(nrounds = c(250,500),
+                            max_depth = c(4,6,8),
+                            eta = c(0.01,0.3,0.5),
+                            gamma = c(0,1),
+                            min_child_weight = c(10, 25,50),
+                            colsample_bytree = c(0.7),
+                            subsample = c(0.6))
+xgboost <- train(
+  form_xgboost,
+  data = Tr_train,
+  method = "xgbTree",
+  trControl = control,
+  metric = "Sens",
+  tuneGrid = grid_default,
+  preProcess = c("center", "scale")
+)
+
+gc()
 
 
 
