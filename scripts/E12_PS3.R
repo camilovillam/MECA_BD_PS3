@@ -812,9 +812,9 @@ test_bog <-readRDS("./stores/20220724_test_bog.rds")
 train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
 
 
-#prueba de remover NAs de manzanas 
+#prueba de remover NAs  
 #train_cha2 <- train_cha[(!is.na(train_cha$MANZANA_ID)), ]
-train_cha2 <- na.omit(train_cha)
+train_bog_modelos <- na.omit(train_bog)# Base de correr modelos
 
 skim(train_cha2)
 
@@ -829,16 +829,16 @@ skim(train_cha2)
 
 # Revisar: Generamos las particiones
 set.seed(100)
-split1 <- createDataPartition(train_cha2$price, p = .7)[[1]]
+split1_bog <- createDataPartition(train_bog_modelos$price, p = .7)[[1]]
 length(split1) 
 
-other <- train_cha2[-split1,]
-Tr_train <- train_cha2[split1,]
+other <- train_bog_modelos[-split1,]
+Tr_train_bog <- train_bog_modelos[split1,]
 
 split2 <- createDataPartition(other$price, p = 1/3)[[1]]
 
-Tr_eval <- other[ split2,]
-Tr_test <- other[-split2,]
+Tr_eval_bog <- other[ split2,]
+Tr_test_bog <- other[-split2,]
 
 ##5.5. Formas funcionales propuestas ----
 
@@ -848,18 +848,18 @@ Tr_test <- other[-split2,]
 
 #modelo3 <- as.formula (price ~ AVALUO_COM+rooms+bathrooms+surface_covered)
 
-modelo1 <- as.formula (price ~ AVALUO_COM+p_upl+rooms)
+modelo1 <- as.formula (price ~ AVALUO_COM+rooms+dist_tpubl+dist_hosp+dist_ccomerc)
 
-modelo2 <- as.formula (price ~ p_upl+rooms+bathrooms)
+modelo2 <- as.formula (price ~ p_upl+rooms+bathrooms+dist_tpubl+dist_hosp+dist_ccomerc)
 
-modelo3 <- as.formula (price ~ AVALUO_COM+rooms+bathrooms+surface_covered)
+modelo3 <- as.formula (price ~ AVALUO_COM+rooms+bathrooms+surface_covered+dist_tpubl+dist_hosp)
 
 
 # Prueba 0, con OLS
 
-reg1_lm<-lm(modelo1,data=Tr_train)
-reg2_lm<-lm(modelo2,data=Tr_train)
-reg3_lm<-lm(modelo3,data=Tr_train)
+reg1_lm<-lm(modelo1,data=Tr_train_bog)
+reg2_lm<-lm(modelo2,data=Tr_train_bog)
+reg3_lm<-lm(modelo3,data=Tr_train_bog)
 
 stargazer(reg1_lm,reg2_lm,reg3_lm,type="text")
 
@@ -870,7 +870,7 @@ library(lagsarlmtree)
 install.packages("spdep")
 library(spdep)
 
-Tr_train_sp <- as(Tr_train, "Spatial")
+Tr_train_sp <- as(Tr_train_bog, "Spatial")
 
 Tr_train_neib <- dnearneigh(coordinates(Tr_train_sp), 0, 0.1, longlat = TRUE)
 
@@ -878,9 +878,9 @@ listw <- nb2listw(Tr_train_neib, style="W", zero.policy = TRUE)
 
 # Prueba 1, saca error. Empty neighbour sets found.
 
-reg1<-lagsarlm(modelo1,data=Tr_train, listw=listw)
-reg2<-lagsarlm(modelo2,data=Tr_train, listw=listw)
-reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw)
+reg1<-lagsarlm(modelo1,data=Tr_train_bog, listw=listw)
+reg2<-lagsarlm(modelo2,data=Tr_train_bog, listw=listw)
+reg3<-lagsarlm(modelo3,data=Tr_train_bog, listw=listw)
 
 stargazer(reg1,reg2,reg3,type="text")
 
@@ -891,13 +891,13 @@ W <- as(listw, "CsparseMatrix")
 trMatc <- trW(W, type="mult")
 
 
-reg1<-lagsarlm(modelo1,data=Tr_train, listw=listw,
+reg1<-lagsarlm(modelo1,data=Tr_train_bog, listw=listw,
                method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
 
-reg2<-lagsarlm(modelo2,data=Tr_train, listw=listw,
+reg2<-lagsarlm(modelo2,data=Tr_train_bog, listw=listw,
                method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
 
-reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw,
+reg3<-lagsarlm(modelo3,data=Tr_train_bog, listw=listw,
                method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
 
 
@@ -908,62 +908,62 @@ stargazer(reg1,reg2,reg3,type="text")
 ###5.6.1. Entrenamiento de modelos CV K-Fold ----
 
 modelo_estimado1 <- train(modelo1,
-                          data = Tr_train,
+                          data = Tr_train_bog,
                           trControl=trainControl(method="cv",number=10),
                           method="lm")
 
 modelo_estimado2 <- train(modelo2,
-                          data = Tr_train,
+                          data = Tr_train_bog,
                           trControl=trainControl(method="cv",number=10),
                           method="lm")
 
 modelo_estimado3 <- train(modelo3,
-                          data = Tr_train,
+                          data = Tr_train_bog,
                           trControl=trainControl(method="cv",number=10),
                           method="lm")
 
-modelo_predicho1 <- predict(modelo_estimado1,newdata = Tr_test )
-modelo_predicho2 <- predict(modelo_estimado2,newdata = Tr_test )
-modelo_predicho3 <- predict(modelo_estimado3,newdata = Tr_test )
+modelo_predicho1 <- predict(modelo_estimado1,newdata = Tr_test_bog )
+modelo_predicho2 <- predict(modelo_estimado2,newdata = Tr_test_bog )
+modelo_predicho3 <- predict(modelo_estimado3,newdata = Tr_test_bog )
 
 #Cálculo del MSE:
-MSE_modelo1 <- with (Tr_test,mean((price - modelo_predicho1)^2))
-MSE_modelo2 <- with (Tr_test,mean((price - modelo_predicho2)^2))
-MSE_modelo3 <- with (Tr_test,mean((price - modelo_predicho3)^2))
+MSE_modelo1 <- with (Tr_test_bog,mean((price - modelo_predicho1)^2))
+MSE_modelo2 <- with (Tr_test_bog,mean((price - modelo_predicho2)^2))
+MSE_modelo3 <- with (Tr_test_bog,mean((price - modelo_predicho3)^2))
 
 MSE_modelo1
 MSE_modelo2
 MSE_modelo3
 
 #Guardar los resultados en la base de Test
-Tr_test$y1 <- modelo_predicho1
-Tr_test$y2 <- modelo_predicho2
-Tr_test$y3 <- modelo_predicho3
+Tr_test_bog$y1 <- modelo_predicho1
+Tr_test_bog$y2 <- modelo_predicho2
+Tr_test_bog$y3 <- modelo_predicho3
 
 #Determinar si es compra o no el inmueble
 
-Tr_test$compra_clas_p1 <- factor(if_else( Tr_test$y1 > Tr_test$price | Tr_test$price-Tr_test$y1<40000000, "Compra", "No_compra"))
-Tr_test$compra_clas_p2 <- factor(if_else( Tr_test$y2 > Tr_test$price | Tr_test$price-Tr_test$y1<40000000, "Compra", "No_compra"))
-Tr_test$compra_clas_p3 <- factor(if_else( Tr_test$y3 > Tr_test$price | Tr_test$price-Tr_test$y1<40000000, "Compra", "No_compra"))
+Tr_test_bog$compra_clas_p1 <- factor(if_else( Tr_test_bog$y1 > Tr_test_bog$price | Tr_test_bog$price-Tr_test_bog$y1<40000000, "Compra", "No_compra"))
+Tr_test_bog$compra_clas_p2 <- factor(if_else( Tr_test_bog$y2 > Tr_test_bog$price | Tr_test_bog$price-Tr_test_bog$y1<40000000, "Compra", "No_compra"))
+Tr_test_bog$compra_clas_p3 <- factor(if_else( Tr_test_bog$y3 > Tr_test_bog$price | Tr_test_bog$price-Tr_test_bog$y1<40000000, "Compra", "No_compra"))
 
-summary(Tr_test$compra_clas_p1)
-summary(Tr_test$compra_clas_p2)
-summary(Tr_test$compra_clas_p3)
+summary(Tr_test_bog$compra_clas_p1)
+summary(Tr_test_bog$compra_clas_p2)
+summary(Tr_test_bog$compra_clas_p3)
 
 #Determinar si el inmueble está subvalorado
 
-Tr_test$subvalorado_clas_p1 <- factor(if_else( Tr_test$price-Tr_test$y1>40000000 , "sub", "No_sub"))
-Tr_test$subvalorado_clas_p2 <- factor(if_else( Tr_test$price-Tr_test$y1>40000000 , "sub", "No_sub"))
-Tr_test$subvalorado_clas_p3 <- factor(if_else( Tr_test$price-Tr_test$y1>40000000 , "sub", "No_sub"))
+Tr_test_bog$subvalorado_clas_p1 <- factor(if_else( Tr_test_bog$price-Tr_test_bog$y1>40000000 , "sub", "No_sub"))
+Tr_test_bog$subvalorado_clas_p2 <- factor(if_else( Tr_test_bog$price-Tr_test_bog$y2>40000000 , "sub", "No_sub"))
+Tr_test_bog$subvalorado_clas_p3 <- factor(if_else( Tr_test_bog$price-Tr_test_bog$y3>40000000 , "sub", "No_sub"))
 
-summary(Tr_test$subvalorado_clas_p1)
-summary(Tr_test$subvalorado_clas_p1)
-summary(Tr_test$subvalorado_clas_p1)
+summary(Tr_test_bog$subvalorado_clas_p1)
+summary(Tr_test_bog$subvalorado_clas_p2)
+summary(Tr_test_bog$subvalorado_clas_p3)
 
 #Calcular el total de dinero gastado con el modelo versus el dinero gastado si las compras se efectuan con precio de mercado 
 
 #para el modelo 1
-compra_y1_summary <- Tr_test %>% 
+compra_y1_summary <- Tr_test_bog %>% 
   group_by(compra_clas_p1) %>% 
   summarise(dinerocompra_clas_p1 = sum(y1))
 
@@ -972,17 +972,17 @@ si_compra_y1_df <- compra_y1_summary %>%
 
 si_compra_y1 <- si_compra_y1_df$dinerocompra_clas_p1[[1]]
 
-compra_price_summary_m1 <- Tr_test %>% 
+compra_price_summary_m1 <- Tr_test_bog %>% 
   group_by(compra_clas_p1) %>% 
   summarise(dinerocompra_clas_p1_0 = sum(price))
 
-si_compra_price_df_m1 <- compra_price_summary %>%
+si_compra_price_df_m1 <- compra_price_summary_m1 %>%
                       filter(compra_clas_p1=="Compra")
 
-si_compra_price_m1 <- si_compra_price_df$dinerocompra_clas_p1_0[[1]]
+si_compra_price_m1 <- si_compra_price_df_m1$dinerocompra_clas_p1_0[[1]]
 
 #para el modelo 2
-compra_y2_summary <- Tr_test %>% 
+compra_y2_summary <- Tr_test_bog %>% 
   group_by(compra_clas_p2) %>% 
   summarise(dinerocompra_clas_p2 = sum(y2))
 
@@ -991,17 +991,17 @@ si_compra_y2_df <- compra_y2_summary %>%
 
 si_compra_y2 <- si_compra_y2_df$dinerocompra_clas_p2[[1]]
 
-compra_price_summary_m2 <- Tr_test %>% 
-  group_by(compra_clas_p1) %>% 
+compra_price_summary_m2 <- Tr_test_bog %>% 
+  group_by(compra_clas_p2) %>% 
   summarise(dinerocompra_clas_p2_0 = sum(price))
 
-si_compra_price_df_m2 <- compra_price_summary %>%
+si_compra_price_df_m2 <- compra_price_summary_m2 %>%
   filter(compra_clas_p2=="Compra")
 
-si_compra_price_m2 <- si_compra_price_df$dinerocompra_clas_p2_0[[1]]
+si_compra_price_m2 <- si_compra_price_df_m2$dinerocompra_clas_p2_0[[1]]
 
 #para el modelo 3
-compra_y3_summary <- Tr_test %>% 
+compra_y3_summary <- Tr_test_bog %>% 
   group_by(compra_clas_p3) %>% 
   summarise(dinerocompra_clas_p3 = sum(y2))
 
@@ -1010,14 +1010,14 @@ si_compra_y3_df <- compra_y3_summary %>%
 
 si_compra_y3 <- si_compra_y3_df$dinerocompra_clas_p3[[1]]
 
-compra_price_summary_m3 <- Tr_test %>% 
+compra_price_summary_m3 <- Tr_test_bog %>% 
   group_by(compra_clas_p3) %>% 
   summarise(dinerocompra_clas_p3_0 = sum(price))
 
-si_compra_price_df_m3 <- compra_price_summary %>%
+si_compra_price_df_m3 <- compra_price_summary_m3 %>%
   filter(compra_clas_p3=="Compra")
 
-si_compra_price_m3 <- si_compra_price_df$dinerocompra_clas_p3_0[[1]]
+si_compra_price_m3 <- si_compra_price_df_m3$dinerocompra_clas_p3_0[[1]]
 
 #Resumen
 
