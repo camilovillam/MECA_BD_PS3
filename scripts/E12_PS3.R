@@ -779,8 +779,8 @@ colSums(is.na(test_bog))
 
 ##5.2. Guardar la base de Bogotá con todos los datos de fuentes externas ----
 
-saveRDS(train_bog, "stores/20220724_train_bog")
-saveRDS(test_bog, "stores/20220724_test_bog")
+saveRDS(train_bog, "stores/20220724_train_bog.rds")
+saveRDS(test_bog, "stores/20220724_test_bog.rds")
 
 ##5.3. Gráficas Info Bogotá D.c. ----
 
@@ -802,7 +802,10 @@ ggplot()+
 
 
 
-##5.4. Base Train solo para chapinero ----
+##5.4. Bases Train para pruebas de modelos ----
+
+train_bog <-readRDS("./stores/20220724_train_bog.rds") 
+test_bog <-readRDS("./stores/20220724_test_bog.rds")
 
 ###5.4.1. Base de chapinero ----
 
