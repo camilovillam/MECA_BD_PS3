@@ -359,6 +359,7 @@ table(train_prop_sf$new_surface)
 
 sum(table(train_prop_sf$new_surface))
 
+
 ##Ahora el patrón 2
 train_prop_sf = train_prop_sf %>% 
   mutate(new_surface = ifelse(is.na(new_surface)==T,
