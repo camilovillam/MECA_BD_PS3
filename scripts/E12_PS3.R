@@ -507,6 +507,64 @@ train_prop_sf = train_prop_sf %>%
 
 sum(table(train_prop_sf$new_bathroom))
 
+####OTRA VARIABLE
+
+##PARQUEADEROS
+
+##Estandarización ### Ahora se renombran a todos "baños"
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "parqueadero" , 
+                                            replacement = "parqueaderos")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "garajes" , 
+                                            replacement = "parqueaderos")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "garaje" , 
+                                            replacement = "parqueaderos")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "un" , 
+                                            replacement = "1")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "dos" , 
+                                            replacement = "2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "tres" , 
+                                            replacement = "3")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cuatro" , 
+                                            replacement = "4")
+
+
+train_prop_sf$description[9642]
+
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patronp1 = "[:space:]+[:digit:]+[:space:]+parqueaderos"
+patronp2 ="[:space:]+[:digit:]+parqueaderos"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_parq = str_extract(string=train_prop_sf$description , pattern= patronp1))
+table(train_prop_sf$new_parq)
+
+
+sum(table(train_prop_sf$new_parq))
+
+##Patrón 2
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_parq = ifelse(is.na(new_parq)==T,
+                               str_extract(string=train_prop_sf$description , pattern= patronp2),
+                           new_parq))
+
+sum(table(train_prop_sf$new_parq))
+
 
 ##3.2. Imputación de datos----
 
