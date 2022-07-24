@@ -480,7 +480,7 @@ test_bog <-subset(test_prop,test_prop$l3 =="Bogotá D.C")
 #sources; both can be from open street maps.
 #At least 2 predictors coming from the title or description of the properties.
 
-##5.1.1 Información Datos Abiertos Bogotá y DANE ----
+###5.1.1 Información Datos Abiertos Bogotá y DANE ----
 
 ##=== Subir los shapes ===##
 
@@ -604,9 +604,6 @@ train_bog <- st_join(train_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_C
 train_bog <- st_join(train_bog,estrato_bog[,c('ESTRATO')])
 train_bog <- st_join(train_bog,Dane_mz_bog[,c('MANZ_CAG')])
 
-skim(train_bog)
-
-
 #Primera prueba join para test
 test_bog <- st_join(test_bog,loc_bog[,c('LocCodigo','LocNombre')])
 test_bog <- st_join(test_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
@@ -658,9 +655,9 @@ saveRDS(train_bog_mz_df,"./stores/Bogota/rds_calculados/mz_train.rds")
 
 colSums(is.na(train_bog))
 
-##5.1.2 Información de OpenSteetMap ----
+###5.1.2 Información de OpenSteetMap ----
 
-### 5.1.2.1 Estaciones transporte público Bogotá: ----
+#### 5.1.2.1 Estaciones transporte público Bogotá: ----
 
 ## objeto osm
 tpublbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
@@ -670,7 +667,7 @@ tpublbog_sf <- tpublbog %>% osmdata_sf()
 tpublbog_sf
 tpublbog_station  <-  tpublbog_sf$osm_points
 
-#leaflet() %>% addTiles() %>% addCircleMarkers(data=tpublbog_station)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=tpublbog_station)
 
 ## Distancia de las viviendas a las estaciones
 dist_tpublb_test  <-  st_distance(x=test_bog, y=tpublbog_station)
@@ -684,7 +681,7 @@ test_bog$dist_tpubl <- min_dist_tpublb_test
 train_bog$dist_tpubl <- min_dist_tpublb_train
 
 
-### 5.1.2.2 Hospitales y clínicas en Bogotá: ----
+#### 5.1.2.2 Hospitales y clínicas en Bogotá: ----
 
 ## objeto osm
 hospbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
@@ -731,8 +728,7 @@ min_dist_hospb_train  <-  apply(dist_hospb_train,1,min)
 test_bog$dist_hosp <- min_dist_hospb_test
 train_bog$dist_hosp <- min_dist_hospb_train
 
-
-### 5.1.2.3 Centros comerciales en Bogotá: ----
+#### 5.1.2.3 Centros comerciales en Bogotá: ----
 
 ## objeto osm
 ccombog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
@@ -755,7 +751,7 @@ test_bog$dist_ccomerc <- min_dist_ccomercb_test
 train_bog$dist_ccomerc <- min_dist_ccomercb_train
 
 
-### 5.1.2.4. Parques en Bogotá: ----
+#### 5.1.2.4. Parques en Bogotá: ----
 
 ## objeto osm
 parkbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
@@ -764,7 +760,7 @@ parkbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
 parkbog_sf <- parkbog %>% osmdata_sf()
 park_bog  <-  parkbog_sf$osm_points
 
-#leaflet() %>% addTiles() %>% addCircleMarkers(data=park_bog)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=park_bog)
 
 ## Distancia de las viviendas a parques
 dist_parkb_test  <-  st_distance(x=test_bog, y=park_bog)
@@ -781,8 +777,12 @@ train_bog$dist_park <- min_dist_parkb_train
 colSums(is.na(train_bog))
 colSums(is.na(test_bog))
 
+##5.2. Guardar la base de Bogotá con todos los datos de fuentes externas ----
 
-##5.2. Gráficas Info Bogotá D.c. ----
+saveRDS(train_bog, "stores/20220724_train_bog")
+saveRDS(test_bog, "stores/20220724_test_bog")
+
+##5.3. Gráficas Info Bogotá D.c. ----
 
 
 #Primera prueba gráfica
@@ -802,9 +802,9 @@ ggplot()+
 
 
 
-##5.3. Base Train solo para chapinero ----
+##5.4. Base Train solo para chapinero ----
 
-###5.3.1. Base de chapinero ----
+###5.4.1. Base de chapinero ----
 
 train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
 
@@ -816,7 +816,7 @@ train_cha2 <- na.omit(train_cha)
 skim(train_cha2)
 
 
-###5.3.2 Partición de la base chapinero en tres----
+###5.4.2 Partición de la base chapinero en tres----
 
 #La base de datos Train se divide en tres particiones:
 # Tr_train: Entrenar el modelo
@@ -837,7 +837,7 @@ split2 <- createDataPartition(other$price, p = 1/3)[[1]]
 Tr_eval <- other[ split2,]
 Tr_test <- other[-split2,]
 
-##5.4. Formas funcionales propuestas ----
+##5.5. Formas funcionales propuestas ----
 
 #modelo1 <- as.formula (price ~ AVALUO_COM+p_upl+SCANOMBRE+rooms)
 
@@ -900,9 +900,9 @@ reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw,
 
 stargazer(reg1,reg2,reg3,type="text")
 
-##5.5. Modelos de predicción ----
+##5.6. Modelos de predicción ----
 
-###5.5.1. Entrenamiento de modelos CV K-Fold ----
+###5.6.1. Entrenamiento de modelos CV K-Fold ----
 
 modelo_estimado1 <- train(modelo1,
                           data = Tr_train,
