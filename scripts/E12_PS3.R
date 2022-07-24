@@ -416,11 +416,6 @@ train_prop_sf = train_prop_sf %>%
 sum(table(train_prop_sf$new_surface))
 
 
-
-
-train_prop_sf$new_surface<- NULL
-
-
 ####OTRA VARIABLE
 
 ##Baños
