@@ -508,6 +508,7 @@ train_prop_sf = train_prop_sf %>%
 
 train_prop_sf$new_bathroom<-gsub("baños", "", train_prop_sf$new_bathroom)
 
+
 ####OTRA VARIABLE
 
 ##PARQUEADEROS
@@ -566,8 +567,17 @@ train_prop_sf = train_prop_sf %>%
 
 sum(table(train_prop_sf$new_parq))
 
+###Ahora se elimina la unidad de medida para que quede solo el número de baño
 
 train_prop_sf$new_parq<-gsub("parqueaderos", "", train_prop_sf$new_parq)
+
+##Se procede a guardar la base de datos
+
+train_prop_sf$geometry<- NULL   #Convierte el objeto sf en DataFrame para guardarlo más fácil
+
+setwd("/Users/jorgeeduardogarcia/Desktop/BIG_DATA/MECA_BD_PS3")
+
+saveRDS(train_prop_sf,"./stores/train_prop_vars_texto.rds")
 
 
 
@@ -645,8 +655,6 @@ test_prop_sf$description[14]
 test_prop_sf$description[18]
 
 
-
-
 #Se crean patrones para extraer el área medida en metro cuadrado de la vivienda, de la variable descripción
 
 
@@ -674,7 +682,7 @@ test_prop_sf = test_prop_sf %>%
 table(test_prop_sf$new_surface)
 
 
-sum(table(train_prop_sf$new_surface))
+sum(table(test_prop_sf$new_surface))
 
 
 ##Ahora el patrón 2
@@ -727,6 +735,9 @@ test_prop_sf = test_prop_sf %>%
 
 sum(table(test_prop_sf$new_surface))
 
+###Ahora se elimina la unidad de medida para que quede solo que el número de metros de la vivienda
+
+test_prop_sf$new_surface<-gsub("mt2", "", test_prop_sf$new_surface)
 
 ####OTRA VARIABLE
 
