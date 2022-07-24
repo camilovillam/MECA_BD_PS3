@@ -416,6 +416,9 @@ train_prop_sf = train_prop_sf %>%
 
 sum(table(train_prop_sf$new_surface))
 
+###Ahora se elimina la unidad de medida para que quede solo el número de área 
+
+train_prop_sf$new_surface<-gsub("mt2", "", train_prop_sf$new_surface)
 
 ####OTRA VARIABLE
 
@@ -501,7 +504,9 @@ train_prop_sf = train_prop_sf %>%
                               str_extract(string=train_prop_sf$description , pattern= patronb2),
                               new_bathroom))
 
-sum(table(train_prop_sf$new_bathroom))
+###Ahora se elimina la unidad de medida para que quede solo el número de baño
+
+train_prop_sf$new_bathroom<-gsub("baños", "", train_prop_sf$new_bathroom)
 
 ####OTRA VARIABLE
 
@@ -560,6 +565,11 @@ train_prop_sf = train_prop_sf %>%
                            new_parq))
 
 sum(table(train_prop_sf$new_parq))
+
+
+train_prop_sf$new_parq<-gsub("parqueaderos", "", train_prop_sf$new_parq)
+
+
 
 ##SE HACE EL MISMO PROCEDIMIENTO CON LA BASE TEST
 
