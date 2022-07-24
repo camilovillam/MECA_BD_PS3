@@ -305,6 +305,9 @@ train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern =
 train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "mts" , 
                                             replacement = "mt2")
 
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "m²" , 
+                                            replacement = "mt2")
+
 train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "mtrs2", 
                                             replacement = "mt2")
 
@@ -328,6 +331,7 @@ train_prop_sf$description[59216]
 train_prop_sf$description[39765]
 train_prop_sf$description[14]
 train_prop_sf$description[18]
+train_prop_sf$description[40339]
                                             
                                            
 
@@ -411,6 +415,8 @@ sum(table(train_prop_sf$new_surface))
 
 
 train_prop_sf$new_surface<- NULL
+
+
 
 ##3.2. Imputación de datos----
 
