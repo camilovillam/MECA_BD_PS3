@@ -824,6 +824,10 @@ test_prop_sf = test_prop_sf %>%
 
 sum(table(test_prop_sf$new_bathroom))
 
+###Ahora se elimina la unidad de medida (baños) para que solo quede el número de los baños
+
+test_prop_sf$new_bathroom<-gsub("baños", "", test_prop_sf$new_bathroom)
+
 ####OTRA VARIABLE
 
 ##PARQUEADEROS
@@ -881,6 +885,18 @@ test_prop_sf = test_prop_sf %>%
                            new_parq))
 
 sum(table(test_prop_sf$new_parq))
+
+###Ahora se elimina la unidad de medida (parquederos) para que solo quede el número de parqueaderos
+
+test_prop_sf$new_parq<-gsub("parqueaderos", "", test_prop_sf$new_parq)
+
+##Se procede a guardar la base de datos
+
+test_prop_sf$geometry<- NULL   #Convierte el objeto sf en DataFrame para guardarlo más fácil
+
+setwd("/Users/jorgeeduardogarcia/Desktop/BIG_DATA/MECA_BD_PS3")
+
+saveRDS(test_prop_sf,"./stores/test_prop_vars_texto.rds")
 
 
 ##3.2. Imputación de datos----
