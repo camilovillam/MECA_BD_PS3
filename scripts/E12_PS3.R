@@ -1289,15 +1289,18 @@ sapply(train_subset, mean)
 #Por ahora, de la OIME
 agr_area_OIME_mzn <- OIME %>% 
   group_by(COBAMA) %>%
-  summarize(area_mzn_median=median(Area_priv))
+  summarize(area_mzn_median=median(Area_priv),
+            num_obs_area=n())
 
 agr_area_OIME_barr <- OIME %>% 
   group_by(BARRIO) %>%
-  summarize(area_barr_median=median(Area_priv))
+  summarize(area_barr_median=median(Area_priv),
+            num_obs_area=n())
 
 agr_area_OIME_estr <- OIME %>% 
   group_by(ESTRATO) %>%
-  summarize(area_estr_median=median(Area_priv))
+  summarize(area_estr_median=median(Area_priv),
+            num_obs_area=n())
 
 
 test_med <- left_join(test_med,agr_area_OIME_mzn,by="COBAMA")
