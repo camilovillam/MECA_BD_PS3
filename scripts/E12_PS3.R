@@ -509,43 +509,10 @@ ggplot()+
         panel.grid.minor = element_blank(),
         axis.text = element_text(size=6))
 
-#Primera prueba join para train
-train_bog <- st_join(train_bog,loc_bog[,c('LocCodigo','LocNombre')])
-train_bog <- st_join(train_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
-train_bog <- st_join(train_bog,seg_bog[,c('t_puntos','p_upl')])
-
-sf_use_s2(FALSE)
-train_bog <- st_join(train_bog,mz_bog[,c('MANCODIGO','SECCODIGO')])
-train_bog <- st_join(train_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM','AVALUO_CAT')])
-train_bog <- st_join(train_bog,sector_bog[,c('SCANOMBRE')])
-train_bog <- st_join(train_bog,estrato_bog[,c('ESTRATO')])
-train_bog <- st_join(train_bog,Dane_mz_bog[,c('MANZ_CAG')])
-
-skim(train_bog)
-
-
-#Primera prueba join para test
-test_bog <- st_join(test_bog,loc_bog[,c('LocCodigo','LocNombre')])
-test_bog <- st_join(test_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
-test_bog <- st_join(test_bog,seg_bog[,c('t_puntos','p_upl')])
-
-sf_use_s2(FALSE)
-
-test_bog <- st_join(test_bog,sector_bog[,c('SCANOMBRE')])
-test_bog <- st_join(test_bog,estrato_bog[,c('ESTRATO')])
-test_bog <- st_join(test_bog,mz_bog[,c('MANCODIGO','SECCODIGO')])
-test_bog <- st_join(test_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM','AVALUO_CAT')])
-
-skim(train_bog)
-skim(test_bog)
-
-##Prueba vecinos ----
-
-#Para train:
-
-mz_bog <- mz_bog %>% filter(!st_is_empty(.))
 
 #Se corrigen geometrias
+
+#para manzanas
 mz_bog$geom_err <- st_is_valid(mz_bog, reason = T)
 nrow(mz_bog)
 table(mz_bog$geom_err)
@@ -559,15 +526,111 @@ table(mz_bog$geom_err)
 mz_bog<- filter(mz_bog,mz_bog$geom_err == "Valid Geometry")
 nrow(mz_bog)
 
+
+#Remover geometrías vacías:
+table(st_is_empty(mz_bog))
+mz_bog <- mz_bog %>% filter(!st_is_empty(.))
+
+#para avaluo
+avaluo_bog$geom_err <- st_is_valid(avaluo_bog, reason = T)
+nrow(avaluo_bog)
+table(avaluo_bog$geom_err)
+
+avaluo_bog <- st_make_valid(avaluo_bog)
+
+avaluo_bog$geom_err <- st_is_valid(avaluo_bog, reason = T)
+nrow(avaluo_bog)
+table(avaluo_bog$geom_err)
+
+avaluo_bog <- filter(avaluo_bog,avaluo_bog$geom_err == "Valid Geometry")
+nrow(avaluo_bog)
+
+#Remover geometrías vacías:
+table(st_is_empty(avaluo_bog))
+avaluo_bog <- avaluo_bog %>% filter(!st_is_empty(.))
+
+
+#para estrato
+estrato_bog$geom_err <- st_is_valid(estrato_bog, reason = T)
+nrow(estrato_bog)
+table(estrato_bog$geom_err)
+
+estrato_bog<- st_make_valid(estrato_bog)
+
+estrato_bog$geom_err <- st_is_valid(estrato_bog, reason = T)
+nrow(estrato_bog)
+table(estrato_bog$geom_err)
+
+estrato_bog<- filter(estrato_bog,estrato_bog$geom_err == "Valid Geometry")
+nrow(estrato_bog)
+
+#Remover geometrías vacías:
+table(st_is_empty(estrato_bog))
+estrato_bog <- estrato_bog %>% filter(!st_is_empty(.))
+
+
+#para manzanas dane
+Dane_mz_bog$geom_err <- st_is_valid(Dane_mz_bog, reason = T)
+nrow(Dane_mz_bog)
+table(Dane_mz_bog$geom_err)
+
+Dane_mz_bog <- st_make_valid(Dane_mz_bog)
+
+Dane_mz_bog$geom_err <- st_is_valid(Dane_mz_bog, reason = T)
+nrow(Dane_mz_bog)
+table(Dane_mz_bog$geom_err)
+
+Dane_mz_bog <- filter(Dane_mz_bog,Dane_mz_bog$geom_err == "Valid Geometry")
+nrow(Dane_mz_bog)
+
+#Remover geometrías vacías:
+table(st_is_empty(Dane_mz_bog))
+Dane_mz_bog <- Dane_mz_bog %>% filter(!st_is_empty(.))
+
+
+#Primera prueba join para train
+sf_use_s2(TRUE)
+
+train_bog <- st_join(train_bog,loc_bog[,c('LocCodigo','LocNombre')])
+train_bog <- st_join(train_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
+train_bog <- st_join(train_bog,seg_bog[,c('t_puntos','p_upl')])
+train_bog <- st_join(train_bog,mz_bog[,c('MANCODIGO','SECCODIGO')])
+train_bog <- st_join(train_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM','AVALUO_CAT')])
+train_bog <- st_join(train_bog,estrato_bog[,c('ESTRATO')])
+train_bog <- st_join(train_bog,Dane_mz_bog[,c('MANZ_CAG')])
+
+skim(train_bog)
+
+
+#Primera prueba join para test
+test_bog <- st_join(test_bog,loc_bog[,c('LocCodigo','LocNombre')])
+test_bog <- st_join(test_bog,upz_bog[,c('UPlCodigo','UPlNombre')])
+test_bog <- st_join(test_bog,seg_bog[,c('t_puntos','p_upl')])
+test_bog <- st_join(test_bog,estrato_bog[,c('ESTRATO')])
+test_bog <- st_join(test_bog,mz_bog[,c('MANCODIGO','SECCODIGO')])
+test_bog <- st_join(test_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM','AVALUO_CAT')])
+
+skim(train_bog)
+skim(test_bog)
+
+##Prueba vecinos ----
+
+#Para train:
+
+
 #Dividir Train entre las que sí encontró manzana y los NA (al final se unen)
 train_bog_mz_ok <- filter(train_bog,!(is.na(train_bog$MANCODIGO)))
 train_bog_mz_na <- filter(train_bog,is.na(train_bog$MANCODIGO))
 
+train_bog_mz_na$MANCODIGO <- NULL
+
+train_bog_mz_na_muestra <- train_bog_mz_na[1:20, ]
+
 install.packages("nngeo")
 library(nngeo)
 start_train = Sys.time()
-train_bog_mz_na <- st_join(train_bog_mz_na,mz_bog[,c('MANCODIGO')],
-                             join = st_nn, k = 1, maxdist = 50, parallel=8)
+train_bog_mz_na_muestra <- st_join(train_bog_mz_na_muestra,mz_bog[,c('MANCODIGO')],
+                             join = st_nn, k = 1, maxdist = 50, progress=TRUE)
 end_train = Sys.time()
 end_train - start_train
 
