@@ -1030,6 +1030,124 @@ si_compra_price_m2
 si_compra_y3
 si_compra_price_m3
 
+###5.6.2. Definición del control (a usarse en los demás modelos) ----
+
+fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
+
+control <- trainControl(method = "cv", number = 5,
+                        classProbs = TRUE,
+                        verbose=FALSE,
+                        savePredictions = T)
+
+###5.6.3. XGBoost 1 ----
+
+xgb_bog1 <- as.formula (price ~ 
+                          AVALUO_COM+
+                          rooms+
+                          bathrooms+
+                          surface_covered+
+                          dist_tpubl+
+                          dist_hosp+
+                          dist_ccomerc+
+                          p_upl)
+
+
+form_xgboost <- xgb_bog1
+
+grid_default <- expand.grid(nrounds = c(250,500),
+                            max_depth = c(4,6,8),
+                            eta = c(0.01,0.3,0.5),
+                            gamma = c(0,1),
+                            min_child_weight = c(10, 25,50),
+                            colsample_bytree = c(0.7),
+                            subsample = c(0.6))
+
+start_xg <- Sys.time()
+
+xgboost <- train(
+  form_xgboost,
+  data = Tr_train_bog, #base bogota
+  method = "xgbTree",
+  trControl = control,
+  na.action  = na.pass,
+  tuneGrid = grid_default,
+  preProcess = c("center", "scale")
+)
+xgboost
+
+#Cálculo del índice desempeño del modelo:
+pred_xgb <- predict(xgboost,Tr_test_bog)
+pred_xgb_df <- data.frame(pred_xgb)
+
+#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
+nrow(Tr_test_bog) - nrow(pred_xgb_df) #Dif. entre la base y el num de predicciones
+colSums(is.na(Tr_test_bog)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
+
+#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
+pred_xgb_df <- cbind (Tr_test_bog[,c("property_id","price")], pred_xgb_df)
+                            #!(is.na(Tr_test_med$COD_CAT_US))), #Filtra obs de la var con NAs
+                    
+pred_xgb_df$geometry <- NULL #Elimino geometría
+#pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
+
+#pred_xgb_df$error_xgb1 <- pred_xgb_df$pred_xgb -pred_xgb_df$price
+#pred_xgb_df$compra_xgb1 <- decision_compra(pred_xgb_df$pred_xgb,pred_xgb_df$error_xgb1)
+
+#resumen_modelos[1,1] <- "XGBoost 1"
+#resumen_modelos[1,2] <- sum(predicciones$compra_xgb1)
+#resumen_modelos[1,3] <- sum(predicciones$compra_xgb1>0)
+#resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
+#resumen_modelos[1,5] <- sum(predicciones$error_xgb1^2)
+
+
+#Determinar si es compra o no el inmueble
+
+pred_xgb_df$compra_xgb1 <- factor(if_else(pred_xgb_df$pred_xgb > pred_xgb_df$price | pred_xgb_df$price-pred_xgb_df$pred_xgb<40000000, "Compra", "No_compra"))
+
+summary(pred_xgb_df$compra_xgb1)
+
+#Determinar si el inmueble está subvalorado
+
+pred_xgb_df$subvalorado_xgb1 <- factor(if_else( pred_xgb_df$price-pred_xgb_df$pred_xgb>40000000 , "sub", "No_sub"))
+
+summary(pred_xgb_df$subvalorado_xgb1)
+
+#Calcular el total de dinero gastado con el modelo versus el dinero gastado si las compras se efectuan con precio de mercado 
+
+#para el modelo 1
+compra_pred_xgb <- pred_xgb_df %>% 
+  group_by(compra_xgb1) %>% 
+  summarise(dinerocompra_xgb = sum(pred_xgb))
+
+si_compra_pred_xgb_df <- compra_pred_xgb %>%
+  filter(compra_xgb1=="Compra")
+
+si_compra_pred_xgb <- si_compra_pred_xgb_df$dinerocompra_xgb[[1]]
+
+
+compra_price_xgb <- pred_xgb_df %>% 
+  group_by(compra_xgb1) %>% 
+  summarise(dinerocompra_price_xgb_0 = sum(price))
+
+si_compra_pred_xgb_df <- compra_price_xgb %>%
+  filter(compra_xgb1=="Compra")
+
+si_compra_price_xgb <- si_compra_pred_xgb_df$dinerocompra_price_xgb_0[[1]]
+
+
+
+#Resumen
+
+si_compra_pred_xgb
+si_compra_price_xgb
+
+
+end_xg <- Sys.time()
+start_xg-end_xg
+
+
+###5.6.4. Otro modelo ----
+
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 6. MODELO MEDELLÍN ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
