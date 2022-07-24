@@ -239,7 +239,7 @@ test_bog <-subset(test_prop,test_prop$l3 =="Bogotá D.C")
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# 3. VARIABLES DE TEXTO E IMPUTACIÓN DE DATOS 
+# 3. VARIABLES DE TEXTO E IMPUTACIÓN DE DATOS ----
 
 ##3.1. Variables de texto----
 
@@ -455,11 +455,32 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
 # 5. MODELO BOGOTÁ D.C. ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+##5.0. subir base y prepararla ----
+
+setwd("~/GitHub/MECA_BD_PS3")
+
+train_prop <-readRDS("./stores/train.rds") #107.567 Obs
+test_prop <-readRDS("./stores/test.rds") #11.150 Obs
+
+#Se transforma toda la base de datos de Train y test:
+
+train_prop <- train_prop %>% mutate(latp=lat,longp=lon)
+train_prop <- st_as_sf(train_prop ,coords=c('longp','latp'),crs=4326)
+
+test_prop <- test_prop %>% mutate(latp=lat,longp=lon)
+test_prop <- st_as_sf(test_prop ,coords=c('longp','latp'),crs=4326)
+
+#Base de Bogotá D.C.
+train_bog <-subset(train_prop,train_prop$l3 =="Bogotá D.C")
+test_bog <-subset(test_prop,test_prop$l3 =="Bogotá D.C") 
+
 ##5.1. Información Bogotá ----
 
 #– At least 2 of these models should include predictors coming from external
 #sources; both can be from open street maps.
 #At least 2 predictors coming from the title or description of the properties.
+
+##5.1.1 Información Datos Abiertos Bogotá y DANE ----
 
 ##=== Subir los shapes ===##
 
@@ -493,22 +514,6 @@ mz_bog     <-st_transform(mz_bog, 4326)
 avaluo_bog <-st_transform(avaluo_bog, 4326)
 estrato_bog <-st_transform(estrato_bog, 4326)
 Dane_mz_bog <-st_transform(Dane_mz_bog, 4326)
-
-#Primera prueba gráfica
-ggplot()+
-  geom_sf(data=upz_bog
-          %>% filter(grepl("RIO",UPlNombre)==FALSE),
-          fill = NA) +
-  geom_sf(data=loc_bog
-          %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
-          fill = "gray")+
-  geom_sf(data=parques_bog, col="orange") +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
 
 #Se corrigen geometrias
 
@@ -613,7 +618,7 @@ test_bog <- st_join(test_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM
 skim(train_bog)
 skim(test_bog)
 
-##Prueba vecinos ----
+##Prueba vecinos ajustes manzanas ----
 
 #Para train:
 
@@ -653,21 +658,165 @@ saveRDS(train_bog_mz_df,"./stores/Bogota/rds_calculados/mz_train.rds")
 
 colSums(is.na(train_bog))
 
-##5.2. Prueba base solo para chapinero ----
+##5.1.2 Información de OpenSteetMap ----
 
-#Base de chapinero ----
+### 5.1.2.1 Estaciones transporte público Bogotá: ----
+
+## objeto osm
+tpublbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="public_transport" , value="station") 
+
+tpublbog_sf <- tpublbog %>% osmdata_sf()
+tpublbog_sf
+tpublbog_station  <-  tpublbog_sf$osm_points
+
+#leaflet() %>% addTiles() %>% addCircleMarkers(data=tpublbog_station)
+
+## Distancia de las viviendas a las estaciones
+dist_tpublb_test  <-  st_distance(x=test_bog, y=tpublbog_station)
+dist_tpublb_train  <-  st_distance(x=train_bog, y=tpublbog_station)
+
+## Distancia mínima
+min_dist_tpublb_test  <-  apply(dist_tpublb_test,1,min)
+min_dist_tpublb_train  <-  apply(dist_tpublb_train,1,min)
+
+test_bog$dist_tpubl <- min_dist_tpublb_test
+train_bog$dist_tpubl <- min_dist_tpublb_train
+
+
+### 5.1.2.2 Hospitales y clínicas en Bogotá: ----
+
+## objeto osm
+hospbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="amenity" , value="hospital")
+
+clinbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="amenity" , value="clinic") 
+
+hospbog_sf <- hospbog %>% osmdata_sf()
+clinbog_sf <- clinbog %>% osmdata_sf()
+
+hospbog_sf
+clinbog_sf
+
+hosp_bog  <-  hospbog_sf$osm_points
+clin_bog  <-  clinbog_sf$osm_points
+
+colnames(hosp_bog)
+colnames(clin_bog)
+compare_df_cols(hosp_bog, clin_bog)
+
+nrow(hosp_bog)
+nrow(clin_bog)
+nrow(hosp_bog) + nrow(clin_bog)
+
+#Se unen las filas por columnas comunes de clínicas y hospitales
+hosp_bog <- rbind(hosp_bog[intersect(colnames(hosp_bog), colnames(clin_bog))],
+                  clin_bog[intersect(colnames(hosp_bog), colnames(clin_bog))])
+
+nrow(hosp_bog)
+colnames(hosp_bog)
+
+#leaflet() %>% addTiles() %>% 
+#  addCircleMarkers(data=hosp_bog,color="blue")
+
+## Distancia de las viviendas a clínicas u hospitales
+dist_hospb_test  <-  st_distance(x=test_bog, y=hosp_bog)
+dist_hospb_train  <-  st_distance(x=train_bog, y=hosp_bog)
+
+## Distancia mínima
+min_dist_hospb_test  <-  apply(dist_hospb_test,1,min)
+min_dist_hospb_train  <-  apply(dist_hospb_train,1,min)
+
+test_bog$dist_hosp <- min_dist_hospb_test
+train_bog$dist_hosp <- min_dist_hospb_train
+
+
+### 5.1.2.3 Centros comerciales en Bogotá: ----
+
+## objeto osm
+ccombog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="shop" , value="mall") 
+
+ccombog_sf <- ccombog %>% osmdata_sf()
+ccomerc_bog  <-  ccombog_sf$osm_points
+
+#leaflet() %>% addTiles() %>% addCircleMarkers(data=ccomerc_bog)
+
+## Distancia de las viviendas a Centros comerciales
+dist_ccomercb_test  <-  st_distance(x=test_bog, y=ccomerc_bog)
+dist_ccomercb_train  <-  st_distance(x=train_bog, y=ccomerc_bog)
+
+## Distancia mínima
+min_dist_ccomercb_test  <-  apply(dist_ccomercb_test,1,min)
+min_dist_ccomercb_train  <-  apply(dist_ccomercb_train,1,min)
+
+test_bog$dist_ccomerc <- min_dist_ccomercb_test
+train_bog$dist_ccomerc <- min_dist_ccomercb_train
+
+
+### 5.1.2.4. Parques en Bogotá: ----
+
+## objeto osm
+parkbog  <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="leisure" , value="park")
+
+parkbog_sf <- parkbog %>% osmdata_sf()
+park_bog  <-  parkbog_sf$osm_points
+
+#leaflet() %>% addTiles() %>% addCircleMarkers(data=park_bog)
+
+## Distancia de las viviendas a parques
+dist_parkb_test  <-  st_distance(x=test_bog, y=park_bog)
+dist_parkb_train  <-  st_distance(x=train_bog, y=park_bog)
+
+## Distancia mínima
+min_dist_parkb_test  <-  apply(dist_parkb_test,1,min)
+min_dist_parkb_train  <-  apply(dist_parkb_train,1,min)
+
+test_bog$dist_park <- min_dist_parkb_test
+train_bog$dist_park <- min_dist_parkb_train
+
+
+colSums(is.na(train_bog))
+colSums(is.na(test_bog))
+
+
+##5.2. Gráficas Info Bogotá D.c. ----
+
+
+#Primera prueba gráfica
+ggplot()+
+  geom_sf(data=upz_bog
+          %>% filter(grepl("RIO",UPlNombre)==FALSE),
+          fill = NA) +
+  geom_sf(data=loc_bog
+          %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
+          fill = "gray")+
+  geom_sf(data=parques_bog, col="orange") +
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))
+
+
+
+##5.3. Base Train solo para chapinero ----
+
+###5.3.1. Base de chapinero ----
 
 train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
 
 
-#prueba de remover NAs de manzanas ----
+#prueba de remover NAs de manzanas 
 #train_cha2 <- train_cha[(!is.na(train_cha$MANZANA_ID)), ]
 train_cha2 <- na.omit(train_cha)
 
 skim(train_cha2)
 
 
-##5.3. Partición de la base chapinero en tres----
+###5.3.2 Partición de la base chapinero en tres----
 
 #La base de datos Train se divide en tres particiones:
 # Tr_train: Entrenar el modelo
@@ -688,7 +837,7 @@ split2 <- createDataPartition(other$price, p = 1/3)[[1]]
 Tr_eval <- other[ split2,]
 Tr_test <- other[-split2,]
 
-##5.4. formas funcionales propuestas ----
+##5.4. Formas funcionales propuestas ----
 
 #modelo1 <- as.formula (price ~ AVALUO_COM+p_upl+SCANOMBRE+rooms)
 
@@ -753,7 +902,7 @@ stargazer(reg1,reg2,reg3,type="text")
 
 ##5.5. Modelos de predicción ----
 
-#Entrenamiento de modelos CV K-Fold
+###5.5.1. Entrenamiento de modelos CV K-Fold ----
 
 modelo_estimado1 <- train(modelo1,
                           data = Tr_train,
@@ -773,8 +922,6 @@ modelo_estimado3 <- train(modelo3,
 modelo_predicho1 <- predict(modelo_estimado1,newdata = Tr_test )
 modelo_predicho2 <- predict(modelo_estimado2,newdata = Tr_test )
 modelo_predicho3 <- predict(modelo_estimado3,newdata = Tr_test )
-
-
 
 #Cálculo del MSE:
 MSE_modelo1 <- with (Tr_test,mean((price - modelo_predicho1)^2))
@@ -849,7 +996,6 @@ si_compra_price_df_m2 <- compra_price_summary %>%
   filter(compra_clas_p2=="Compra")
 
 si_compra_price_m2 <- si_compra_price_df$dinerocompra_clas_p2_0[[1]]
-
 
 #para el modelo 3
 compra_y3_summary <- Tr_test %>% 
