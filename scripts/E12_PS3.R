@@ -422,6 +422,42 @@ train_prop_sf$new_surface<- NULL
 
 ####OTRA VARIABLE
 
+##Baños
+
+##Estandarización ### Ahora se renombran a todos "baños"
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "banos" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "bano" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "baos" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "bañoss" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "bao" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "baño" , 
+                                            replacement = "baños")
+
+train_prop_sf$description[9642]
+
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patron1 = "[:space:]+[:digit:]+[:space:]+[:punct:]+[:digit:]+[:space:]+mt2"
+patron2 = "[:space:]+[:digit:]+mt2" ## pattern
+patron3 = "[:space:]+[:digit:]+[:space:]+mt2" ## pattern
+patron4 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+[:space:]+mt2" ## pattern
+patron5 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+mt2" ## pattern
+patron6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2" ## pattern
+patron7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+mt2" ## pattern
 ##3.2. Imputación de datos----
 
 
