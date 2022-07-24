@@ -1411,12 +1411,12 @@ reg8 <- lm(price ~ val_tot_median + surface_total + factor(ESTRATO) + bedrooms +
              dist_park,
            data=train_med)
 
-reg9 <- lm(price ~val_tot_median_m2imput + m2_imput_OIME_median + factor(ESTRATO) + bedrooms + 
+reg9 <- lm(price ~val_tot_area_OIME + area_OIME_median + factor(ESTRATO) + bedrooms + 
              factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
              dist_park,
            data=train_med)
 
-reg10 <- lm(price ~ val_tot_median + surface_total + factor(ESTRATO) + bedrooms + bathrooms +
+reg10 <- lm(price ~ val_tot_area_OIME + area_OIME_median + factor(ESTRATO) + bedrooms + bathrooms +
              factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
              dist_park,
            data=train_med)
@@ -1480,7 +1480,7 @@ stargazer(reg1,reg2,reg3,type="text")
 fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
 
 control <- trainControl(method = "cv", number = 5,
-                        summaryFunction = fiveStats, 
+                        #summaryFunction = fiveStats, 
                         classProbs = TRUE,
                         verbose=FALSE,
                         savePredictions = T)
@@ -1490,7 +1490,7 @@ control <- trainControl(method = "cv", number = 5,
 
 ###Modelo árbol básico (CART) ----
 
-train_med_fact <- train_med 
+train_med_fact <- Tr_train
 train_med_fact$ESTRATO <- factor(train_med_fact$ESTRATO)
 train_med_fact$COD_CAT_US <- factor(train_med_fact$COD_CAT_US)
 train_med_fact$COD_SUBCAT <- factor(train_med_fact$COD_SUBCAT)
@@ -1507,7 +1507,7 @@ form_tree <- as.formula("price ~
                         dist_ccomerc + 
                         dist_park + 
                         area_OIME_median +
-                        mejor_val_m2_mean")
+                        val_tot_area_OIME")
 
 
 #cp_alpha<-seq(from = 0, to = 0.1, length = 10)
@@ -1521,6 +1521,7 @@ tree <- train(
   trControl = control,
   parms=list(split='Gini'),
   #tuneGrid = expand.grid(cp = cp alpha)#,
+  na.action  = na.pass,
   tuneLength=200
   #preProcess = c("center", "scale")
 )
@@ -1536,7 +1537,7 @@ n_cores <- detectCores()
 print(paste("Mi PC tiene", n_cores, "nucleos"))
 
 # Vamos a usar n_cores - 2 procesadores para esto
-cl <- makePSOCKcluster(n_cores) 
+cl <- makePSOCKcluster(n_cores-2) 
 registerDoParallel(cl)
 
 ##Ejecutar...
@@ -1562,12 +1563,11 @@ xgboost <- train(
   data = Tr_train,
   method = "xgbTree",
   trControl = control,
-  metric = "Sens",
+  na.action  = na.pass,
   tuneGrid = grid_default,
   preProcess = c("center", "scale")
 )
 
-gc()
 
 
 
