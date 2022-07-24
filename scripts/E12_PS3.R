@@ -1529,6 +1529,7 @@ tree <- train(
 tree
 rpart.plot::prp(tree$finalModel)
 pred_tree <- predict(tree,Tr_test)
+pred_tree_df <- data.frame(pred_tree)
 
 
 ###Preparación del PC, cálculos en paralelo ----
@@ -1557,7 +1558,10 @@ grid_default <- expand.grid(nrounds = c(250,500),
                             gamma = c(0,1),
                             min_child_weight = c(10, 25,50),
                             colsample_bytree = c(0.7),
-                            subsample = c(0.6))
+                           subsample = c(0.6))
+
+start_xg <- Sys.time()
+
 xgboost <- train(
   form_xgboost,
   data = Tr_train,
@@ -1568,7 +1572,11 @@ xgboost <- train(
   preProcess = c("center", "scale")
 )
 
+pred_xgb <- predict(xgboost,Tr_test)
+pred_xgb_df <- data.frame(pred_xgb)
 
+end_xg <- Sys.time()
+start_xg-end_xg
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
