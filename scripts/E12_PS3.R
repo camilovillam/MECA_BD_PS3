@@ -322,6 +322,9 @@ train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern =
 train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "metros" ,
                                             replacement = "mt2")
 
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cien" , 
+                                            replacement = "mt2")
+
 ##Se intentó con la sola letra "m". Sin embargo, reemplaza en todo lo que tenga la letra "m", por lo cual dessconfigura el texto de la variable descripcioón.
 
 #Se hace la prueba con algunas filas para identificar si el cambio se realizó en la base 
@@ -417,6 +420,7 @@ sum(table(train_prop_sf$new_surface))
 train_prop_sf$new_surface<- NULL
 
 
+####OTRA VARIABLE
 
 ##3.2. Imputación de datos----
 
