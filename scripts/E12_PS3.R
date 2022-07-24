@@ -336,17 +336,80 @@ train_prop_sf$description[18]
 
 patron1 = "[:space:]+[:digit:]+[:space:]+[:punct:]+[:digit:]+[:space:]+mt2"
 patron2 = "[:space:]+[:digit:]+mt2" ## pattern
-patron3 = "[:space:]+[:digit:]+[:space:]+m2" ## pattern
+patron3 = "[:space:]+[:digit:]+[:space:]+mt2" ## pattern
 patron4 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+[:space:]+mt2" ## pattern
 patron5 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+mt2" ## pattern
 patron6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2" ## pattern
 patron7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+mt2" ## pattern
-patron8 = "[:space:]+[:digit:]+[:space:]+mt2" ## pattern
+
 
 ##Ahora se extrae la información
 
 
-str_extract(string=train_prop_sf$description[1:107567] , pattern= paste0( patron1, "|" ,patron2, "|" ,patron3, "|" ,patron4, "|" ,patron5, "|" ,patron6, "|" ,patron7, "|" ,patron8)) ## extrac pattern
+str_extract(string=train_prop_sf$description[1:107567] ,
+            pattern= paste0( patron1, "|" ,patron2, "|" ,patron3, "|" ,patron4,
+                             "|" ,patron5, "|" ,patron6, "|" ,patron7)) ## extrac pattern
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = str_extract(string=train_prop_sf$description , pattern= patron1))
+table(train_prop_sf$new_surface)
+
+
+sum(table(train_prop_sf$new_surface))
+
+##Ahora el patrón 2
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron2),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+##Ahora el patrón 3
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron3),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+##Patrón 4
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron4),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+##Patrón 5
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron5),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+##Patrón 6 
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron6),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+#Patrón 7
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron7),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+
+
+
+train_prop_sf$new_surface<- NULL
 
 ##3.2. Imputación de datos----
 
