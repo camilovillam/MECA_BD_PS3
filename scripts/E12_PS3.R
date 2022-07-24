@@ -359,6 +359,7 @@ str_extract(string=train_prop_sf$description[1:107567] ,
 
 ##Ahora se crea una variable que refleje los datos extraídos
 
+#Patrón 1
 train_prop_sf = train_prop_sf %>% 
   mutate(new_surface = str_extract(string=train_prop_sf$description , pattern= patron1))
 table(train_prop_sf$new_surface)
@@ -444,6 +445,39 @@ train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern =
 train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "baño" , 
                                             replacement = "baños")
 
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "baño" , 
+                                            replacement = "baños")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "un" , 
+                                            replacement = "1")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "dos" , 
+                                            replacement = "2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "tres" , 
+                                            replacement = "3")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cuatro" , 
+                                            replacement = "4")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cinco" , 
+                                            replacement = "5")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "seis" , 
+                                            replacement = "6")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "siete" , 
+                                            replacement = "7")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "ocho" , 
+                                            replacement = "8")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "nueve" , 
+                                            replacement = "9")
+
 train_prop_sf$description[9642]
 
 ##Ahora se crean los patrones
@@ -451,13 +485,29 @@ train_prop_sf$description[9642]
 #Se crean patrones para extraer los baños de la vivienda, de la variable descripción
 
 
-patron1 = "[:space:]+[:digit:]+[:space:]+[:punct:]+[:digit:]+[:space:]+mt2"
-patron2 = "[:space:]+[:digit:]+mt2" ## pattern
-patron3 = "[:space:]+[:digit:]+[:space:]+mt2" ## pattern
-patron4 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+[:space:]+mt2" ## pattern
-patron5 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+mt2" ## pattern
-patron6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2" ## pattern
-patron7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+mt2" ## pattern
+patronb1 = "[:space:]+[:digit:]+[:space:]+baños"
+patronb2 ="[:space:]+[:digit:]+baños"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_bathroom = str_extract(string=train_prop_sf$description , pattern= patronb1))
+table(train_prop_sf$new_bathroom)
+
+
+sum(table(train_prop_sf$new_bathroom))
+
+##Patrón 2
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_bathroom = ifelse(is.na(new_bathroom)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patronb2),
+                              new_bathroom))
+
+sum(table(train_prop_sf$new_bathroom))
+
+
 ##3.2. Imputación de datos----
 
 
