@@ -608,7 +608,15 @@ train_bog$dist_park <- min_dist_parkb_train
 colSums(is.na(train_bog))
 colSums(is.na(test_bog))
 
+#Exportación archivos de parques:
+parques_bog_train <- train_bog[,c("property_id","dist_park")]
+parques_bog_test <- test_bog[,c("property_id","dist_park")]
 
+parques_bog_train$geometry <- NULL
+parques_bog_test$geometry <- NULL
+
+export(train_bog,"./stores/Bogota/train_bog_parques.rds")
+export(test_bog,"./stores/Bogota/test_bog_parques.rds")
 
 
 
