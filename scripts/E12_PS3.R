@@ -1571,12 +1571,99 @@ xgboost <- train(
   tuneGrid = grid_default,
   preProcess = c("center", "scale")
 )
-
+xgboost
 pred_xgb <- predict(xgboost,Tr_test)
 pred_xgb_df <- data.frame(pred_xgb)
 
 end_xg <- Sys.time()
 start_xg-end_xg
+
+
+nrow(Tr_test)-nrow(pred_tree_df)
+colSums(is.na(Tr_test))
+
+
+
+predicciones <- Tr_test[,c("property_id","description","price","val_tot_area_OIME","COD_CAT_US",)]
+predicciones <- filter(predicciones,!(is.na(predicciones$COD_CAT_US)))
+predicciones$COD_CAT_US <- NULL
+predicciones <- cbind(predicciones,pred_tree_df,pred_xgb_df)
+
+
+#### ENSAYO 2
+
+form_tree2 <- as.formula("price ~ 
+                        bedrooms + 
+                        ESTRATO + 
+                        COD_CAT_US + 
+                        COD_SUBCAT + 
+                        dist_metro + 
+                        dist_hosp + 
+                        dist_ccomerc + 
+                        dist_park + 
+                        area_OIME_median")
+
+
+#cp_alpha<-seq(from = 0, to = 0.1, length = 10)
+
+#Ensayo de tree con un control de internet:
+
+tree2 <- train(
+  form_tree2,
+  data = Tr_train,
+  method = "rpart",
+  trControl = control,
+  parms=list(split='Gini'),
+  #tuneGrid = expand.grid(cp = cp alpha)#,
+  na.action  = na.pass,
+  tuneLength=200
+  #preProcess = c("center", "scale")
+)
+
+tree2
+rpart.plot::prp(tree2$finalModel)
+pred_tree2 <- predict(tree2,Tr_test)
+pred_tree_df2 <- data.frame(pred_tree2)
+
+
+
+###Modelo XGBoost ----
+
+form_xgboost2 <- form_tree2
+
+grid_default <- expand.grid(nrounds = c(250,500),
+                            max_depth = c(4,6,8),
+                            eta = c(0.01,0.3,0.5),
+                            gamma = c(0,1),
+                            min_child_weight = c(10, 25,50),
+                            colsample_bytree = c(0.7),
+                            subsample = c(0.6))
+
+start_xg <- Sys.time()
+
+xgboost2 <- train(
+  form_xgboost2,
+  data = Tr_train,
+  method = "xgbTree",
+  trControl = control,
+  na.action  = na.pass,
+  tuneGrid = grid_default,
+  preProcess = c("center", "scale")
+)
+
+
+xgboost2
+pred_xgb2 <- predict(xgboost2,Tr_test)
+pred_xgb_df2 <- data.frame(pred_xgb2)
+
+end_xg <- Sys.time()
+start_xg-end_xg
+
+
+predicciones <- cbind(predicciones,pred_tree_df2,pred_xgb_df2)
+predicciones$geometry <- NULL
+
+#export(predicciones,"./views/ensayo_predicc_med.xlsx")
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
