@@ -818,7 +818,6 @@ saveRDS(train_bog, "stores/20220724_train_bog_p.rds")
 saveRDS(test_bog, "stores/20220724_test_bog_p.rds")
 
 
-
 ###5.4.1. Base de chapinero ----
 
 train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
@@ -828,7 +827,7 @@ train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
 #train_cha2 <- train_cha[(!is.na(train_cha$MANZANA_ID)), ]
 train_bog_modelos <- na.omit(train_bog)# Base de correr modelos
 
-skim(train_cha2)
+#skim(train_cha2)
 
 
 ###5.4.2 Partición de la base chapinero en tres----
@@ -853,12 +852,6 @@ Tr_eval_bog <- other[ split2,]
 Tr_test_bog <- other[-split2,]
 
 ##5.5. Formas funcionales propuestas ----
-
-#modelo1 <- as.formula (price ~ AVALUO_COM+p_upl+SCANOMBRE+rooms)
-
-#modelo2 <- as.formula (price ~ p_upl+SCANOMBRE+rooms+bathrooms)
-
-#modelo3 <- as.formula (price ~ AVALUO_COM+rooms+bathrooms+surface_covered)
 
 modelo1 <- as.formula (price ~ AVALUO_COM+rooms+dist_tpubl+dist_hosp+dist_ccomerc)
 
@@ -1170,8 +1163,114 @@ si_compra_price_xgb
 end_xg <- Sys.time()
 start_xg-end_xg
 
+###5.6.4. XGBoost 2 ----
 
-###5.6.4. Otro modelo ----
+xgb_bog2 <- as.formula (price ~ 
+                          AVALUO_COM+
+                          rooms+
+                          bathrooms+
+                          surface_covered+
+                          dist_tpubl+
+                          dist_hosp+
+                          dist_ccomerc+
+                          p_upl+
+                          dist_park)
+
+
+form_xgboost2 <- xgb_bog2
+
+grid_default <- expand.grid(nrounds = c(250,500),
+                            max_depth = c(4,6,8),
+                            eta = c(0.01,0.3,0.5),
+                            gamma = c(0,1),
+                            min_child_weight = c(10, 25,50),
+                            colsample_bytree = c(0.7),
+                            subsample = c(0.6))
+
+start_xg <- Sys.time()
+
+xgboost2 <- train(
+  form_xgboost2,
+  data = Tr_train_bog, #base bogota
+  method = "xgbTree",
+  trControl = control,
+  na.action  = na.pass,
+  tuneGrid = grid_default,
+  preProcess = c("center", "scale")
+)
+xgboost2
+
+#Cálculo del índice desempeño del modelo:
+pred_xgb2 <- predict(xgboost2,Tr_test_bog)
+pred_xgb_df2 <- data.frame(pred_xgb2)
+
+#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
+nrow(Tr_test_bog) - nrow(pred_xgb_df2) #Dif. entre la base y el num de predicciones
+colSums(is.na(Tr_test_bog)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
+
+#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
+pred_xgb_df2 <- cbind (Tr_test_bog[,c("property_id","price")], pred_xgb_df2)
+#!(is.na(Tr_test_med$COD_CAT_US))), #Filtra obs de la var con NAs
+
+pred_xgb_df2$geometry <- NULL #Elimino geometría
+#pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
+
+#pred_xgb_df$error_xgb2 <- pred_xgb_df2$pred_xgb -pred_xgb_df2$price
+#pred_xgb_df$compra_xgb2 <- decision_compra(pred_xgb_df2$pred_xgb2,pred_xgb_df2$error_xgb2)
+
+#resumen_modelos[1,1] <- "XGBoost_Bog 1"
+#resumen_modelos[1,2] <- sum(predicciones$compra_xgb2)
+#resumen_modelos[1,3] <- sum(predicciones$compra_xgb2>0)
+#resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
+#resumen_modelos[1,5] <- sum(predicciones$error_xgb2^2)
+
+
+#Determinar si es compra o no el inmueble
+
+pred_xgb_df2$compra_xgb2 <- factor(if_else(pred_xgb_df2$pred_xgb2 > pred_xgb_df2$price | pred_xgb_df2$price-pred_xgb_df2$pred_xgb2<40000000, "Compra", "No_compra"))
+
+summary(pred_xgb_df2$compra_xgb2)
+
+#Determinar si el inmueble está subvalorado
+
+pred_xgb_df2$subvalorado_xgb2 <- factor(if_else( pred_xgb_df2$price-pred_xgb_df2$pred_xgb2>40000000 , "sub", "No_sub"))
+
+summary(pred_xgb_df2$subvalorado_xgb2)
+
+#Calcular el total de dinero gastado con el modelo versus el dinero gastado si las compras se efectuan con precio de mercado 
+
+#para el modelo 1
+compra_pred_xgb2 <- pred_xgb_df2 %>% 
+  group_by(compra_xgb2) %>% 
+  summarise(dinerocompra_xgb2 = sum(pred_xgb2))
+
+si_compra_pred_xgb_df2 <- compra_pred_xgb2 %>%
+  filter(compra_xgb2=="Compra")
+
+si_compra_pred_xgb2 <- si_compra_pred_xgb_df2$dinerocompra_xgb2[[1]]
+
+
+compra_price_xgb2 <- pred_xgb_df2 %>% 
+  group_by(compra_xgb2) %>% 
+  summarise(dinerocompra_price_xgb_02 = sum(price))
+
+si_compra_pred_xgb_df2 <- compra_price_xgb2 %>%
+  filter(compra_xgb2=="Compra")
+
+si_compra_price_xgb2 <- si_compra_pred_xgb_df$dinerocompra_price_xgb_02[[1]]
+
+
+
+#Resumen
+
+si_compra_pred_xgb
+si_compra_price_xgb
+
+
+end_xg <- Sys.time()
+start_xg-end_xg
+
+
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 6. MODELO MEDELLÍN ----
