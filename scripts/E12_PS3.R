@@ -66,7 +66,8 @@ setwd("~/GitHub/MECA_BD_PS3")
 train_prop <-readRDS("./stores/train.rds") #107.567 Obs
 test_prop <-readRDS("./stores/test.rds") #11.150 Obs
 
-
+table(duplicated(train_prop[,1]))
+table(duplicated(test_prop[,1]))
 
 ##1.1. Exploración incial de los datos ----
 
@@ -257,6 +258,9 @@ test_bog <-subset(test_prop,test_prop$l3 =="Bogotá D.C")
 train_med <-subset(train_prop,train_prop$l3 =="Medellín")
 test_med <-subset(test_prop,test_prop$l3 =="Medellín")   
 
+table(duplicated(train_med[,1]))
+table(duplicated(test_med[,1]))
+
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 3. VARIABLES DE TEXTO E IMPUTACIÓN DE DATOS ----
@@ -278,205 +282,6 @@ test_med <-subset(test_prop,test_prop$l3 =="Medellín")
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-#Cargar las ciclovias (solo para ensayar)
-
-ciclovias <- read_sf("./stores/Ciclovia/Ciclovia.shp")
-
-ggplot()+
-  geom_sf(data=ciclovias) +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-upla<-read_sf("./stores/upla/UPla.shp")
-
-
-sitios_ref <- data.frame(place="Uniandes",
-               lat=4.601590,
-               long=-74.066391,
-               nudge_y=-0.001)
-
-sitios_ref <- sitios_ref %>% mutate(latp=lat,longp=long)
-
-sitios_ref <- st_as_sf(sitios_ref,coords=c('longp','latp'),crs=4326)
-
-
-#Graficar Bogotá con las ciclovías en azul y Uniandes como punto de referencia:
-
-ggplot()+
-  geom_sf(data=upla
-          %>% filter(grepl("RIO",UPlNombre)==FALSE),
-          fill = NA) +
-  geom_sf(data=sitios_ref, col="red") +
-  geom_sf(data=ciclovias, col="blue") +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-#Ejemplo de 6 sitios de la base de datos de Train (subset):
-
-prop_subset <- head(train_prop)
-
-prop_subset <- prop_subset %>% mutate(latp=lat,longp=lon)
-prop_subset <- st_as_sf(prop_subset,coords=c('longp','latp'),crs=4326)
-
-
-#Medición de distancias de las propiedades a Uniandes:
-
-prop_subset$dist_a_Uniandes <-st_distance(prop_subset,sitios_ref)
-
-
-#Se grafican las 6 propiedades en el mapa (junto con ciclovías y Uniandes, por ensayar)
-
-ggplot()+
-  geom_sf(data=upla
-          %>% filter(grepl("RIO",UPlNombre)==FALSE),
-          fill = NA) +
-  geom_sf(data=sitios_ref, col="red") +
-  geom_sf(data=ciclovias, col="blue") +
-  geom_sf(data=prop_subset, col="orange") +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-
-#Cargar localidades:
-
-loc_bog <- read_sf("./stores/localidades_Bog_shp/Loca.shp")
-
-
-#Se transforma toda la base de datos de Train y test:
-
-train_prop <- train_prop %>% mutate(latp=lat,longp=lon)
-train_prop <- st_as_sf(train_prop ,coords=c('longp','latp'),crs=4326)
-
-test_prop <- test_prop %>% mutate(latp=lat,longp=lon)
-test_prop <- st_as_sf(test_prop ,coords=c('longp','latp'),crs=4326)
-
-
-#Validar los sistemas de coordenadas de los objetos:
-
-st_crs(ciclovias)
-st_crs(prop_subset)
-st_crs(sitios_ref)
-st_crs(upla)
-st_crs(loc_bog)
-st_crs(train_prop)
-
-ciclovias
-prop_subset
-sitios_ref
-upla
-loc_bog
-train_prop
-
-#Transformar todos los sistemas de coordenadas a 4326
-ciclovias<-st_transform(ciclovias, 4326)
-prop_subset<-st_transform(prop_subset, 4326)
-sitios_ref<-st_transform(sitios_ref, 4326)
-upla<-st_transform(upla, 4326)
-loc_bog<-st_transform(loc_bog, 4326)
-
-
-
-#Se grafican las propiedades en el mapa (junto con ciclovías y Uniandes, por ensayar)
-
-ggplot()+
-  geom_sf(data=upla
-          %>% filter(grepl("RIO",UPlNombre)==FALSE),
-          fill = NA) +
-  geom_sf(data=loc_bog
-          %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
-          fill = "gray")+
-  geom_sf(data=sitios_ref, col="red") +
-  geom_sf(data=ciclovias, col="blue") +
-  geom_sf(data=prop_subset, col="green") +
-  geom_sf(data=test_prop
-          %>% filter(grepl("Cundinamarca",l2)==TRUE),
-          col="orange",
-          size=1) +
-    theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-#Solo Chapinero:
-
-ggplot()+
-  geom_sf(data=loc_bog
-          %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
-          fill = NA)+
-  geom_sf(data=test_prop
-          %>% filter(grepl("Cundinamarca",l2)==TRUE),
-          col="orange",
-          size=1) +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-#Ensayos con Leaflet:
-
-leaflet() %>% addTiles() %>% addCircleMarkers(data=test_prop)
-leaflet() %>% addTiles() %>% addCircles(data=test_prop)
-leaflet() %>% addTiles() %>% addPolylines(data=ciclovias)
-leaflet() %>% addTiles() %>% addPolygons(data=loc_bog)
-
-#Solo Chapinero
-
-leaflet() %>% addTiles() %>% addPolygons(data=loc_bog%>% filter(grepl("CHAPINERO",LocNombre)==TRUE))
-
-
-#Propiedades de Test
-
-leaflet() %>% addTiles() %>% 
-  addPolygons(data=loc_bog %>% 
-                filter(grepl("CHAPINERO",LocNombre)==TRUE)) %>% 
-  addCircleMarkers(data=test_prop %>%
-                     filter(grepl("Cundinamarca",l2)==TRUE),
-                              col="red")
-
-
-#Ensayos adicionales:
-
-#Buscar sitio por nombre
-
-uniandes <- geocode_OSM("Universidad de los Andes, Bogotá", as.sf=T)
-uniandes
-
-leaflet() %>% addTiles() %>% addCircles(data=uniandes)
-uniandes <- st_transform(uniandes, 4326)
-
-
-#Features:
-
-available_features() %>% head(50)
-
-
-#Estaciones de metro en Medellín:
-
-## objeto osm
-metromed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
-  add_osm_feature(key="public_transport" , value="station") 
-
-metromed_sf <- metromed %>% osmdata_sf()
-metromed_sf
-metromed_station  <-  metromed_sf$osm_points
-
-leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 5. MODELO BOGOTÁ D.C. ----
@@ -668,7 +473,8 @@ leaflet() %>% addTiles() %>%
 train_med <-subset(train_prop,train_prop$l3 =="Medellín")
 test_med <-subset(test_prop,test_prop$l3 =="Medellín")   
 
-
+table(duplicated(train_med[,1]))
+table(duplicated(test_med[,1]))
 
 ##6.2 INFORMACIÓN GEOGRÁFICA----
 
@@ -1155,7 +961,16 @@ export(test_med,"./stores/Medellín/test_med.rds")
 ##6.4. AVALÚO A PARTIR DEL OBSERVATORIO INMOBILIARIO DE MEDELLÍN ----
 
 train_med <- import("./stores/Medellín/train_med.rds")
-test_med <- import("./stores/Medellín/train_med.rds")
+test_med <- import("./stores/Medellín/test_med.rds")
+
+table(duplicated(train_med[,1]))
+table(duplicated(test_med[,1]))
+
+#HAY UNOS DUPLICADOS QUE SURGEN DEL JOIN GEOGRÁFICO.
+#SE ELIMINAN PARA QUE LUEGO NO SE SIGAN DUPLICANDO CON LOS JOIN SIGUIENTES
+
+train_med <- distinct(train_med,property_id, .keep_all = TRUE)
+table(duplicated(train_med[,1]))
 
 #Archivos del Observatorio Inmobiliario de Medellín:
 #Fuente: 
@@ -1269,8 +1084,8 @@ OIME$ESTRATO <- OIME$Estrato
 OIME$Estrato <- NULL
 
 
-train_barrios_NA <- filter(train_med,is.na(train_med$Media_m2_barr.y))
-barrios_NA <- data.frame(table(train_barrios_NA$BARRIO))
+# train_barrios_NA <- filter(train_med,is.na(train_med$Media_m2_barr.y))
+# barrios_NA <- data.frame(table(train_barrios_NA$BARRIO))
 
 #Corrección de los nombres de barrios más representativos:
 
@@ -1292,18 +1107,18 @@ OIME$BARRIO  <-  case_when(
 )
 
 
-
-#Mejorar el Avalúo - Ajuste por inflación?
-
-test_med$año_anunc <- str_sub(test_med$start_date,1,4)
-table(test_med$año_anunc)
-
-train_med$año_anunc <- str_sub(train_med$start_date,1,4)
-table(train_med$año_anunc)
-
-#Del observatorio tengo observaciones entre 2018-2022.
-#Cae dentro del rango de fechas, en principio no veo necesario ajustar
-#por inflación.
+# 
+# #Mejorar el Avalúo - Ajuste por inflación?
+# 
+# test_med$año_anunc <- str_sub(test_med$start_date,1,4)
+# table(test_med$año_anunc)
+# 
+# train_med$año_anunc <- str_sub(train_med$start_date,1,4)
+# table(train_med$año_anunc)
+# 
+# #Del observatorio tengo observaciones entre 2018-2022.
+# #Cae dentro del rango de fechas, en principio no veo necesario ajustar
+# #por inflación.
 
 
 #PENDIENTE TERMINAR SI ALGO:
@@ -1319,38 +1134,36 @@ table(train_med$año_anunc)
 # 
 # ?separate
 
-#Comparar BARRIOS:
-
-#Resumen de diferencias
-all_equal(barrios,barrios_j)
-comparedf(barrios,barrios_j)
-
-#Comparación de variables (columnas)
-compare_df_cols(barrios,barrios_j)
-
-#Comparación detallada:
-comparacion_barrios <- summary(comparedf(barrios,barrios_j))
-
-
+# #Comparar BARRIOS:
+# 
+# #Resumen de diferencias
+# all_equal(barrios,barrios_j)
+# comparedf(barrios,barrios_j)
+# 
+# #Comparación de variables (columnas)
+# compare_df_cols(barrios,barrios_j)
+# 
+# #Comparación detallada:
+# comparacion_barrios <- summary(comparedf(barrios,barrios_j))
 
 
-#PENDIENTE AJUSTAR INFLACION
+
 
 #Promedios
 
 agreg_OIME_mzn <- OIME %>% 
   group_by(COBAMA) %>%
-  summarize(Media_m2_mzn=mean(Valor_m2),
+  summarize(#Media_m2_mzn=mean(Valor_m2),
             Mediana_m2_mzn=median(Valor_m2))
 
 agreg_OIME_barr <- OIME %>% 
   group_by(BARRIO) %>%
-  summarize(Media_m2_barr=mean(Valor_m2),
+  summarize(#Media_m2_barr=mean(Valor_m2),
             Mediana_m2_barr=median(Valor_m2))
 
 agreg_OIME_estr <- OIME %>% 
   group_by(ESTRATO) %>%
-  summarize(Media_m2_estr=mean(Valor_m2),
+  summarize(#Media_m2_estr=mean(Valor_m2),
             Mediana_m2_estr=median(Valor_m2))
 
 test_med$COBAMA <- test_med$MANZANA
@@ -1371,120 +1184,566 @@ colSums(is.na(train_med))
 
 
 
-#Case: mejor avalúo disponible: Media
-test_med$mejor_val_m2_mean  <-  case_when(
-  !is.na(test_med$Media_m2_mzn) ~ as.double(test_med$Media_m2_mzn),
-  !is.na(test_med$Media_m2_barr) ~ as.double(test_med$Media_m2_barr),
-  !is.na(test_med$Media_m2_estr) ~ as.double(test_med$Media_m2_estr))
-
-train_med$mejor_val_m2_mean  <-  case_when(
-  !is.na(train_med$Media_m2_mzn) ~ as.double(train_med$Media_m2_mzn),
-  !is.na(train_med$Media_m2_barr) ~ as.double(train_med$Media_m2_barr),
-  !is.na(train_med$Media_m2_estr) ~ as.double(train_med$Media_m2_estr))
+# #Case: mejor avalúo disponible: Media
+# test_med$mejor_val_m2_mean  <-  case_when(
+#   !is.na(test_med$Media_m2_mzn) ~ as.double(test_med$Media_m2_mzn),
+#   !is.na(test_med$Media_m2_barr) ~ as.double(test_med$Media_m2_barr),
+#   !is.na(test_med$Media_m2_estr) ~ as.double(test_med$Media_m2_estr))
+# 
+# train_med$mejor_val_m2_mean  <-  case_when(
+#   !is.na(train_med$Media_m2_mzn) ~ as.double(train_med$Media_m2_mzn),
+#   !is.na(train_med$Media_m2_barr) ~ as.double(train_med$Media_m2_barr),
+#   !is.na(train_med$Media_m2_estr) ~ as.double(train_med$Media_m2_estr))
 
 
 #Case: mejor avalúo disponible: Mediana
-test_med$mejor_val_m2_median  <-  case_when(
+test_med$avaluo_m2  <-  case_when(
   !is.na(test_med$Mediana_m2_mzn) ~ as.double(test_med$Mediana_m2_mzn),
   !is.na(test_med$Mediana_m2_barr) ~ as.double(test_med$Mediana_m2_barr),
   !is.na(test_med$Mediana_m2_estr) ~ as.double(test_med$Mediana_m2_estr))
 
-train_med$mejor_val_m2_median  <-  case_when(
+train_med$avaluo_m2  <-  case_when(
   !is.na(train_med$Mediana_m2_mzn) ~ as.double(train_med$Mediana_m2_mzn),
   !is.na(train_med$Mediana_m2_barr) ~ as.double(train_med$Mediana_m2_barr),
   !is.na(train_med$Mediana_m2_estr) ~ as.double(train_med$Mediana_m2_estr))
 
 
-test_med$val_tot_mean <- test_med$mejor_val_m2_mean * test_med$surface_total
-test_med$val_tot_median <- test_med$mejor_val_m2_median * test_med$surface_total
-train_med$val_tot_mean <- train_med$mejor_val_m2_mean * train_med$surface_total
-train_med$val_tot_median <- train_med$mejor_val_m2_median * train_med$surface_total
+# test_med$val_tot_mean <- test_med$mejor_val_m2_mean * test_med$surface_total
+#test_med$val_tot_median <- test_med$mejor_val_m2_median * test_med$surface_total
+# train_med$val_tot_mean <- train_med$mejor_val_m2_mean * train_med$surface_total
+#train_med$val_tot_median <- train_med$mejor_val_m2_median * train_med$surface_total
 
+colnames(test_med)
+
+test_med[,c("Mediana_m2_mzn","Mediana_m2_barr","Mediana_m2_estr")] <- list(NULL)
+train_med[,c("Mediana_m2_mzn","Mediana_m2_barr","Mediana_m2_estr")] <- list(NULL)
 
 colSums(is.na(test_med))
 colSums(is.na(train_med))
 
 
-train_subset <- train_med[,c("description","price","val_tot_mean","val_tot_median")]
-train_subset <- filter(train_subset,!(is.na(train_subset$val_tot_mean)))
-train_subset$MSE_mean <- (train_subset$price - train_subset$val_tot_mean)^2
-train_subset$MSE_median <- (train_subset$price - train_subset$val_tot_median)^2
+# train_subset <- train_med[,c("description","price","val_tot_median")]
+# train_subset <- filter(train_subset,!(is.na(train_subset$val_tot_median)))
+# 
+# colnames(train_subset)
+# 
+# sapply(train_subset, mean)
 
-colnames(train_subset)
+# 
+# 
+# ###Imputar área en m2, con la mediana ----
+# 
+# #1) Del observatorio
+# 
+# #Por ahora, de la OIME
+# agr_area_OIME_mzn <- OIME %>% 
+#   group_by(COBAMA) %>%
+#   summarize(area_mzn_median=median(Area_priv),
+#             num_obs_area=n())
+# 
+# agr_area_OIME_barr <- OIME %>% 
+#   group_by(BARRIO) %>%
+#   summarize(area_barr_median=median(Area_priv),
+#             num_obs_area=n())
+# 
+# agr_area_OIME_estr <- OIME %>% 
+#   group_by(ESTRATO) %>%
+#   summarize(area_estr_median=median(Area_priv),
+#             num_obs_area=n())
+# 
+# 
+# test_med <- left_join(test_med,agr_area_OIME_mzn,by="COBAMA")
+# train_med <- left_join(train_med,agr_area_OIME_mzn,by="COBAMA")
+# 
+# test_med <- left_join(test_med,agr_area_OIME_barr,by="BARRIO")
+# train_med <- left_join(train_med,agr_area_OIME_barr,by="BARRIO")
+# 
+# test_med <- left_join(test_med,agr_area_OIME_estr,by="ESTRATO")
+# train_med <- left_join(train_med,agr_area_OIME_estr,by="ESTRATO")
+# 
+# colSums(is.na(test_med))
+# colSums(is.na(train_med))
+# 
+# 
+# #Case: área m2: Mediana
+# test_med$area_OIME_median  <-  case_when(
+#   !is.na(test_med$surface_total) ~ test_med$surface_total,
+#   !is.na(test_med$area_mzn_median) ~ as.double(test_med$area_mzn_median),
+#   !is.na(test_med$area_barr_median) ~ as.double(test_med$area_barr_median),
+#   !is.na(test_med$area_estr_median) ~ as.double(test_med$area_estr_median))
+# 
+# train_med$area_OIME_median  <-  case_when(
+#   !is.na(train_med$surface_total) ~ train_med$surface_total,
+#   !is.na(train_med$area_mzn_median) ~ as.double(train_med$area_mzn_median),
+#   !is.na(train_med$area_barr_median) ~ as.double(train_med$area_barr_median),
+#   !is.na(train_med$area_estr_median) ~ as.double(train_med$area_estr_median))
+# 
+# 
+# colSums(is.na(test_med))
+# colSums(is.na(train_med))
+# 
+# test_med$val_tot_area_OIME <- test_med$mejor_val_m2_median * test_med$area_OIME_median
+# train_med$val_tot_area_OIME <- train_med$mejor_val_m2_median * train_med$area_OIME_median
+# 
+# 
+# colSums(is.na(test_med))
+# colSums(is.na(train_med))
+# 
+# 
+# train_subset <- train_med[,c("description","price","val_tot_mean","val_tot_median","val_tot_area_OIME")]
+# train_subset <- filter(train_subset,!(is.na(train_subset$val_tot_area_OIME)))
+# train_subset$MSE_median_2 <- (train_subset$price - train_subset$val_tot_area_OIME)^2
+# 
+# sapply(train_subset, mean)
 
-sapply(train_subset, mean)
 
 
+####INCORPORAR VARIABLES DE TEXTO E IMPUTAR NAs ----
 
-###Imputar área en m2, con la mediana ----
+#Cargo el archivo que se había guardado previamente
 
-#1) Del observatorio
-#2) De la BD
-#3) Ambos
+test_var_texto <- import("./stores/test_prop_vars_texto.rds")
+train_var_texto <- import("./stores/train_prop_vars_texto.rds")
 
-#Por ahora, de la OIME
+nrow(test_var_texto)
+nrow(train_var_texto)
+
+colSums(is.na(test_var_texto))
+colSums(is.na(train_var_texto))
+
+
+colnames(test_var_texto)
+
+test_var_texto <- test_var_texto[,c("property_id","new_surface","new_rooms",
+                                    "new_bathroom","new_parq")]
+
+
+train_var_texto <- train_var_texto[,c("property_id","new_surface","new_rooms",
+                                    "new_bathroom","new_parq")]
+
+nrow(test_prop)
+nrow(train_prop)
+
+colSums(is.na(test_var_texto))
+colSums(is.na(train_var_texto))
+
+#Se ajustan espacios y otros caracteres, se convierte a numérico:
+
+#Para test:
+test_var_texto$new_surface <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+    gsub("[[:space:]]", "", test_var_texto$new_surface)),"\\s", ""))
+
+test_var_texto$new_rooms <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", test_var_texto$new_rooms)),"\\s", ""))
+
+test_var_texto$new_bathroom <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", test_var_texto$new_bathroom)),"\\s", ""))
+
+test_var_texto$new_parq <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", test_var_texto$new_parq)),"\\s", ""))
+
+
+#Para train:
+train_var_texto$new_surface <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", train_var_texto$new_surface)),"\\s", ""))
+
+train_var_texto$new_rooms <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", train_var_texto$new_rooms)),"\\s", ""))
+
+train_var_texto$new_bathroom <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", train_var_texto$new_bathroom)),"\\s", ""))
+
+train_var_texto$new_parq <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", train_var_texto$new_parq)),"\\s", ""))
+
+
+#Se hacen los join con las bases originales
+test_prop <- left_join(test_prop,test_var_texto,by="property_id")
+train_prop <- left_join(train_prop,train_var_texto,by="property_id")
+
+
+#Eliminación de áreas improbables, posibles errores en la extracción de texto:
+
+test_prop$new_surface <- ifelse(test_prop$new_surface<20,
+                                NA, test_prop$new_surface)
+
+train_prop$new_surface <- ifelse(train_prop$new_surface<20,
+                                NA, train_prop$new_surface)
+
+
+#Calculo la mejor área disponible. Inicialmente, entre la original y la de texto:
+
+test_prop$area_apto <- case_when(
+  !is.na(test_prop$surface_total) ~ test_prop$surface_total,
+  !is.na(test_prop$new_surface) ~ test_prop$new_surface)
+
+train_prop$area_apto <- case_when(
+  !is.na(train_prop$surface_total) ~ train_prop$surface_total,
+  !is.na(train_prop$new_surface) ~ as.double(train_prop$new_surface))
+
+
+colSums(is.na(test_prop))
+colSums(is.na(train_prop))
+
+
+#A los que todavía quedan con NAs, les debo imputar los promedios.
+
+
+####Imputación para Medellín: ----
+
+###Como aún no tengo la info de Bogotá, sigo con la base de Medellín, por el momento:
+
+test_prop_df <- test_prop
+test_prop_df$geometry <- NULL
+
+train_prop_df <- train_prop
+train_prop_df$geometry <- NULL
+
+
+test_med_n <- left_join(test_med,
+                        test_prop_df[,c("property_id",
+                                     setdiff(colnames(test_prop),colnames(test_med)))],
+                        by="property_id")
+
+
+train_med_n <- left_join(train_med,
+                        train_prop_df[,c("property_id",
+                                        setdiff(colnames(train_prop),colnames(train_med)))],
+                        by="property_id")
+
+
+colSums(is.na(test_med_n))
+colSums(is.na(train_med_n))  
+
+
+#ÁREA DE LA PROPIEDAD: ----
+#En Medellín tengo:
+
+#Áreas originales de la BD
+#Áreas extraidas del texto
+#Áreas del OIME (Observatorio inmobiliario de Medellín)
+
+#Calculo los promedios con base en la original y las del OIME, para no propagar error de texto.
+
+##PROMEDIO DE ÁREA DEL OBSERVATORIO OIME:
+
 agr_area_OIME_mzn <- OIME %>% 
   group_by(COBAMA) %>%
   summarize(area_mzn_median=median(Area_priv),
-            num_obs_area=n())
+            n_obs_area_mzn=n())
 
 agr_area_OIME_barr <- OIME %>% 
   group_by(BARRIO) %>%
   summarize(area_barr_median=median(Area_priv),
-            num_obs_area=n())
+            n_obs_area_barr=n())
 
 agr_area_OIME_estr <- OIME %>% 
   group_by(ESTRATO) %>%
   summarize(area_estr_median=median(Area_priv),
-            num_obs_area=n())
+            n_obs_area_estr=n())
 
 
-test_med <- left_join(test_med,agr_area_OIME_mzn,by="COBAMA")
-train_med <- left_join(train_med,agr_area_OIME_mzn,by="COBAMA")
+# test_med_n[,c("area_mzn_median",  "n_obs_area_mzn",   "area_barr_median",
+#                "n_obs_area_barr",  "area_estr_median", "n_obs_area_estr" )] <- list(NULL)
+# 
+# train_med_n[,c("area_mzn_median.x","num_obs_area.x","area_barr_median.x", "num_obs_area.y",     "area_estr_median.x", "num_obs_area","area_mzn_median.y",
+#                "n_obs_area_mzn",     "area_barr_median.y", "n_obs_area_barr",    "area_estr_median.y", "n_obs_area_estr")] <- list(NULL) 
+# 
+# colnames(test_med_n)
+# colnames(train_med_n)
 
-test_med <- left_join(test_med,agr_area_OIME_barr,by="BARRIO")
-train_med <- left_join(train_med,agr_area_OIME_barr,by="BARRIO")
+test_med_n <- left_join(test_med_n,agr_area_OIME_mzn,by="COBAMA")
+train_med_n <- left_join(train_med_n,agr_area_OIME_mzn,by="COBAMA")
 
-test_med <- left_join(test_med,agr_area_OIME_estr,by="ESTRATO")
-train_med <- left_join(train_med,agr_area_OIME_estr,by="ESTRATO")
+test_med_n <- left_join(test_med_n,agr_area_OIME_barr,by="BARRIO")
+train_med_n <- left_join(train_med_n,agr_area_OIME_barr,by="BARRIO")
+
+test_med_n <- left_join(test_med_n,agr_area_OIME_estr,by="ESTRATO")
+train_med_n <- left_join(train_med_n,agr_area_OIME_estr,by="ESTRATO")
+
+colSums(is.na(test_med_n))
+colSums(is.na(train_med_n))
+
+nrow(test_med)+nrow(train_med)
+
+table(duplicated(train_med[,1]))
+table(duplicated(test_med[,1]))
+
+
+#Ahora los promedios de las áreas que ya tenía:
+
+#Creo una base con todas las observaciones de Medellín
+test_med_n['price'] <- NA
+props_med <- rbind(train_med_n,test_med_n)
+props_med$geometry <- NULL
+
+props_med_ok <- filter(props_med,!(is.na(props_med$area_apto)))
+
+agr_area_med_mzn <- props_med_ok %>% 
+  group_by(COBAMA) %>%
+  summarize(area_mzn_medianm=median(area_apto),
+            n_obs_area_mznm=n())
+
+agr_area_med_barr <- props_med_ok %>% 
+  group_by(BARRIO) %>%
+  summarize(area_barr_medianm=median(area_apto),
+            n_obs_area_barrm=n())
+
+agr_area_med_estr <- props_med_ok %>% 
+  group_by(ESTRATO) %>%
+  summarize(area_estr_medianm=median(area_apto),
+            n_obs_area_estrm=n())
+
+
+props_med <- left_join(props_med,agr_area_med_mzn,by="COBAMA")
+props_med <- left_join(props_med,agr_area_med_barr,by="BARRIO")
+props_med <- left_join(props_med,agr_area_med_estr,by="ESTRATO")
+
+colSums(is.na(props_med))
+
+
+
+#Ahora unifico las medianas de OIME y el calculado:
+
+props_med$area_mzn <- (props_med$area_mzn_median * props_med$n_obs_area_mzn + 
+                         props_med$area_mzn_medianm * props_med$n_obs_area_mznm) / 
+  (props_med$n_obs_area_mzn+props_med$n_obs_area_mznm)
+
+props_med$area_barr <- (props_med$area_barr_median * props_med$n_obs_area_barr + 
+                         props_med$area_barr_medianm * props_med$n_obs_area_barrm) / 
+  (props_med$n_obs_area_barr+props_med$n_obs_area_barrm)
+
+props_med$area_estr <- (props_med$area_estr_median * props_med$n_obs_area_estr + 
+                         props_med$area_estr_medianm * props_med$n_obs_area_estrm) / 
+  (props_med$n_obs_area_estr+props_med$n_obs_area_estrm)
+
+
+#Elimino columnas intermedias:
+
+colnames(props_med)
+props_med[,c(
+"area_mzn_median",   "n_obs_area_mzn",    "area_barr_median",  "n_obs_area_barr",  
+"area_estr_median",  "n_obs_area_estr","area_apto",
+"area_mzn_medianm",  "n_obs_area_mznm" , 
+"area_barr_medianm", "n_obs_area_barrm" , "area_estr_medianm", "n_obs_area_estrm"
+)] <- list(NULL) 
+
+
+#Hago la imputación final de área del apartamento:
+
+props_med$area_apto <- case_when(
+  !is.na(props_med$surface_total) ~ props_med$surface_total, #1°, área database
+  !is.na(props_med$new_surface) ~ props_med$new_surface, #Luego, área texto
+  !is.na(props_med$area_mzn) ~ props_med$area_mzn, #Luego, área manzana
+  !is.na(props_med$area_barr) ~ props_med$area_barr, #Luego, área barrio
+  !is.na(props_med$area_estr) ~ props_med$area_estr) #Al final, área estrato
+
+
+#Le pego ese valor a train_med y test_med
+
+colnames(train_med)
+colnames(test_med)
+
+
+test_med <- left_join(test_med,props_med[,c("property_id","area_apto")],
+                       by="property_id")
+
+train_med <- left_join(train_med,props_med[,c("property_id","area_apto")],
+                       by="property_id")
+
+
+#Calculo el avalúo total del apartamento:
+test_med$avaluo_total <- test_med$avaluo_m2 * test_med$area_apto
+train_med$avaluo_total <- train_med$avaluo_m2 * train_med$area_apto
 
 colSums(is.na(test_med))
 colSums(is.na(train_med))
 
 
-#Case: área m2: Mediana
-test_med$area_OIME_median  <-  case_when(
-  !is.na(test_med$surface_total) ~ test_med$surface_total,
-  !is.na(test_med$area_mzn_median) ~ as.double(test_med$area_mzn_median),
-  !is.na(test_med$area_barr_median) ~ as.double(test_med$area_barr_median),
-  !is.na(test_med$area_estr_median) ~ as.double(test_med$area_estr_median))
 
-train_med$area_OIME_median  <-  case_when(
-  !is.na(train_med$surface_total) ~ train_med$surface_total,
-  !is.na(train_med$area_mzn_median) ~ as.double(train_med$area_mzn_median),
-  !is.na(train_med$area_barr_median) ~ as.double(train_med$area_barr_median),
-  !is.na(train_med$area_estr_median) ~ as.double(train_med$area_estr_median))
+#BAÑOS DE LA PROPIEDAD: ----
 
+#Creo una variable con la mejor info disponible:
+
+props_med$num_banos <- case_when(
+  !is.na(props_med$bathrooms) ~ props_med$bathrooms,
+  !is.na(props_med$new_bathroom) ~ props_med$new_bathroom)
+
+props_med_ok <- filter(props_med,!(is.na(props_med$num_banos)))
+
+agr_banos_med_mzn <- props_med_ok %>% 
+  group_by(COBAMA) %>%
+  summarize(banos_mzn=median(num_banos))
+
+agr_banos_med_barr <- props_med_ok %>% 
+  group_by(BARRIO) %>%
+  summarize(banos_barr=median(num_banos))
+
+agr_banos_med_estr <- props_med_ok %>% 
+  group_by(ESTRATO) %>%
+  summarize(banos_estr=median(num_banos))
+
+
+props_med <- left_join(props_med,agr_banos_med_mzn,by="COBAMA")
+props_med <- left_join(props_med,agr_banos_med_barr,by="BARRIO")
+props_med <- left_join(props_med,agr_banos_med_estr,by="ESTRATO")
+
+colSums(is.na(props_med))
+
+
+#Hago la imputación final de # de baños:
+
+props_med$num_banos <- case_when(
+  !is.na(props_med$bathrooms) ~ props_med$bathrooms,
+  !is.na(props_med$new_bathroom) ~ props_med$new_bathroom,
+  !is.na(props_med$banos_mzn) ~ props_med$banos_mzn,
+  !is.na(props_med$banos_barr) ~ props_med$banos_barr,
+  !is.na(props_med$banos_estr) ~ props_med$banos_estr)
+
+
+#Le pego ese valor a train_med y test_med
+
+test_med <- left_join(test_med,props_med[,c("property_id","num_banos")],
+                      by="property_id")
+
+train_med <- left_join(train_med,props_med[,c("property_id","num_banos")],
+                       by="property_id")
+
+
+
+#CUARTOS DE LA PROPIEDAD: ----
+
+#Creo una variable con la mejor info disponible:
+
+props_med$num_cuartos <- case_when(
+  !is.na(props_med$rooms) ~ props_med$rooms,
+  !is.na(props_med$new_rooms) ~ props_med$new_rooms)
+
+props_med_ok <- filter(props_med,!(is.na(props_med$num_cuartos)))
+
+agr_cuartos_med_mzn <- props_med_ok %>% 
+  group_by(COBAMA) %>%
+  summarize(cuartos_mzn=median(num_cuartos))
+
+agr_cuartos_med_barr <- props_med_ok %>% 
+  group_by(BARRIO) %>%
+  summarize(cuartos_barr=median(num_cuartos))
+
+agr_cuartos_med_estr <- props_med_ok %>% 
+  group_by(ESTRATO) %>%
+  summarize(cuartos_estr=median(num_cuartos))
+
+
+props_med <- left_join(props_med,agr_cuartos_med_mzn,by="COBAMA")
+props_med <- left_join(props_med,agr_cuartos_med_barr,by="BARRIO")
+props_med <- left_join(props_med,agr_cuartos_med_estr,by="ESTRATO")
+
+colSums(is.na(props_med))
+
+
+#Hago la imputación final de # cuartos:
+
+props_med$num_cuartos <- case_when(
+  !is.na(props_med$rooms) ~ props_med$rooms,
+  !is.na(props_med$new_rooms) ~ props_med$new_rooms,
+  !is.na(props_med$cuartos_mzn) ~ props_med$cuartos_mzn,
+  !is.na(props_med$cuartos_barr) ~ props_med$cuartos_barr,
+  !is.na(props_med$cuartos_estr) ~ props_med$cuartos_estr)
+
+
+#Le pego ese valor a train_med y test_med
+
+test_med <- left_join(test_med,props_med[,c("property_id","num_cuartos")],
+                      by="property_id")
+
+train_med <- left_join(train_med,props_med[,c("property_id","num_cuartos")],
+                       by="property_id")
 
 colSums(is.na(test_med))
 colSums(is.na(train_med))
 
-test_med$val_tot_area_OIME <- test_med$mejor_val_m2_median * test_med$area_OIME_median
-train_med$val_tot_area_OIME <- train_med$mejor_val_m2_median * train_med$area_OIME_median
 
+
+#NÚMERO DE PARQUEADEROS DE LA PROPIEDAD: ----
+
+props_med_ok <- filter(props_med,!(is.na(props_med$new_parq)))
+
+agr_parq_med_mzn <- props_med_ok %>% 
+  group_by(COBAMA) %>%
+  summarize(parq_mzn=median(new_parq))
+
+agr_parq_med_barr <- props_med_ok %>% 
+  group_by(BARRIO) %>%
+  summarize(parq_barr=median(new_parq))
+
+agr_parq_med_estr <- props_med_ok %>% 
+  group_by(ESTRATO) %>%
+  summarize(parq_estr=median(new_parq))
+
+
+props_med <- left_join(props_med,agr_parq_med_mzn,by="COBAMA")
+props_med <- left_join(props_med,agr_parq_med_barr,by="BARRIO")
+props_med <- left_join(props_med,agr_parq_med_estr,by="ESTRATO")
+
+colSums(is.na(props_med))
+
+
+#Hago la imputación final de# parqueaderos:
+
+props_med$num_parq <- case_when(
+  !is.na(props_med$new_parq) ~ props_med$new_parq,
+  !is.na(props_med$parq_mzn) ~ props_med$parq_mzn,
+  !is.na(props_med$parq_barr) ~ props_med$parq_barr,
+  !is.na(props_med$parq_estr) ~ props_med$parq_estr)
+
+
+#Le pego ese valor a train_med y test_med
+
+test_med <- left_join(test_med,props_med[,c("property_id","num_parq")],
+                      by="property_id")
+
+train_med <- left_join(train_med,props_med[,c("property_id","num_parq")],
+                       by="property_id")
 
 colSums(is.na(test_med))
 colSums(is.na(train_med))
 
+nrow(test_med)
+nrow(train_med)
 
-train_subset <- train_med[,c("description","price","val_tot_mean","val_tot_median","val_tot_area_OIME")]
-train_subset <- filter(train_subset,!(is.na(train_subset$val_tot_area_OIME)))
-train_subset$MSE_median_2 <- (train_subset$price - train_subset$val_tot_area_OIME)^2
+export(test_med,"./stores/Medellín/test_med_compl.rds")
+export(train_med,"./stores/Medellín/train_med_compl.rds")
 
-sapply(train_subset, mean)
 
+rm(list=ls(pattern="^agr"))
+rm(list=c("OIME","props_med_ok","test_med_n","train_med_n",
+          "test_prop_df","train_prop_df",
+          "test_var_texto","train_var_texto"))
+
+gc()
 
 ## 6.6. REGRESIONES ----
+
+test_med <- import("./stores/Medellín/test_med_compl.rds")
+train_med <- import("./stores/Medellín/train_med_compl.rds")
+
+
 
 ### PARTIR LAS BASES DE DATOS: TRAIN, EVAL, TEST.
 
@@ -1515,7 +1774,7 @@ nrow(Tr_test_med)
 
 nrow(Tr_train_med)+nrow(Tr_eval_med)+nrow(Tr_test_med)==nrow(train_med)
 
-rm(other)
+rm(list=c("other","split1","split2"))
 
 
 ### Matriz de desempeño de los modelos:----
@@ -1563,7 +1822,8 @@ stopCluster(cl)
 
 
 ### Modelos básicos ----
-
+nrow(Tr_train_med)
+colnames(Tr_train_med)
 colSums(is.na(Tr_train_med))
 
 
@@ -1573,36 +1833,33 @@ reg1 <- lm(price ~ factor(ESTRATO),
 reg2 <- lm(price ~ bedrooms + factor(ESTRATO), 
            data=Tr_train_med)
 
-reg3 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO), 
+reg3 <- lm(price ~ num_banos + bedrooms + factor(ESTRATO), 
            data=Tr_train_med)
 
-reg4 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + surface_total, 
+reg4 <- lm(price ~ num_banos + bedrooms + factor(ESTRATO) + area_apto, 
            data=Tr_train_med)
 
-reg5 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total, 
+reg5 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto, 
            data=Tr_train_med)
 
-
-reg6 <- lm(price ~ bedrooms + ESTRATO + COD_CAT_US + COD_SUBCAT, 
-           data=Tr_train_med)
- 
-reg7 <- lm(price ~ bathrooms + bedrooms + factor(ESTRATO) + factor(NOMBRE.x) + surface_total + factor(COD_SUBCAT), 
+reg6 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_m2, 
            data=Tr_train_med)
 
-reg8 <- lm(price ~ val_tot_median + surface_total + factor(ESTRATO) + bedrooms + 
-             factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
-             dist_park,
+reg7 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total, 
            data=Tr_train_med)
 
-reg9 <- lm(price ~val_tot_area_OIME + area_OIME_median + factor(ESTRATO) + bedrooms + 
-             factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
-             dist_park,
+reg8 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto:avaluo_m2, 
            data=Tr_train_med)
 
-reg10 <- lm(price ~ val_tot_area_OIME + area_OIME_median + factor(ESTRATO) + bedrooms + bathrooms +
-             factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc + 
-             dist_park,
+reg9 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total +
+             factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc +
+             dist_park + num_parq, 
            data=Tr_train_med)
+
+reg10 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total +
+              dist_metro + dist_hosp + dist_ccomerc + dist_park, 
+           data=Tr_train_med)
+
 
 
 mean(reg8$residuals^2)
@@ -1611,9 +1868,10 @@ mean(reg10$residuals^2)
 
 stargazer(reg8,reg9,reg10,type="text")
 
-stargazer(reg1,reg2,reg3,type="text")
-stargazer(reg4,reg5,type="text")
-stargazer(reg4,reg6,type="text")
+stargazer(reg1,reg2,reg3,reg4,reg5,type="text")
+stargazer(reg6,type="text")
+stargazer(reg5,reg6,reg7,reg8,reg9,type="text")
+stargazer(reg7,reg9,reg10,type="text")
 stargazer(reg6,reg7,type="text")
 
 
@@ -1658,7 +1916,7 @@ stargazer(reg1,reg2,reg3,type="text")
 
 
 #Definición del control (a usarse en los demás modelos)
-fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
+#fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
 
 control <- trainControl(method = "cv", number = 5,
                         #summaryFunction = fiveStats, 
@@ -1671,24 +1929,24 @@ control <- trainControl(method = "cv", number = 5,
 
 ###Modelo árbol básico (CART) ----
 
-train_med_fact <- Tr_train_med
-train_med_fact$ESTRATO <- factor(train_med_fact$ESTRATO)
-train_med_fact$COD_CAT_US <- factor(train_med_fact$COD_CAT_US)
-train_med_fact$COD_SUBCAT <- factor(train_med_fact$COD_SUBCAT)
+# train_med_fact <- Tr_train_med
+# train_med_fact$ESTRATO <- factor(train_med_fact$ESTRATO)
+# train_med_fact$COD_CAT_US <- factor(train_med_fact$COD_CAT_US)
+# train_med_fact$COD_SUBCAT <- factor(train_med_fact$COD_SUBCAT)
 
 colnames(train_med_fact)
 
 form_tree <- as.formula("price ~ 
-                        bedrooms + 
-                        ESTRATO + 
-                        COD_CAT_US + 
-                        COD_SUBCAT + 
-                        dist_metro + 
-                        dist_hosp + 
-                        dist_ccomerc + 
-                        dist_park + 
-                        area_OIME_median +
-                        val_tot_area_OIME")
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          factor(ESTRATO) + 
+                          area_apto + 
+                          avaluo_total +
+                          dist_metro + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
 
 
 #cp_alpha<-seq(from = 0, to = 0.1, length = 10)
@@ -1709,8 +1967,33 @@ tree <- train(
 
 tree
 rpart.plot::prp(tree$finalModel)
+
+nrow(Tr_test_med)
+
+#Cálculo del índice desempeño del modelo:
 pred_tree <- predict(tree,Tr_test_med)
 pred_tree_df <- data.frame(pred_tree)
+
+
+#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
+nrow(Tr_test_med) - nrow(pred_tree_df) #Dif. entre la base y el num de predicciones
+colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
+
+#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
+pred_tree_df <- cbind(filter(Tr_test_med[,c("property_id","price")],
+                            !(is.na(Tr_test_med$ESTRATO))), #Filtra obs de la var con NAs
+                      pred_tree_df)
+pred_tree_df$geometry <- NULL #Elimino geometría
+pred_tree_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
+
+pred_tree_df$error_tree1 <- pred_tree_df$pred_tree -pred_tree_df$price
+pred_tree_df$compra_tree1 <- decision_compra(pred_tree_df$pred_tree,pred_tree_df$error_tree1)
+
+resumen_modelos[1,1] <- "Tree 1"
+resumen_modelos[1,2] <- sum(pred_tree_df$compra_tree1)
+resumen_modelos[1,3] <- sum(pred_tree_df$compra_tree1>0)
+resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
+resumen_modelos[1,5] <- sum(pred_tree_df$error_tree1^2)
 
 
 
@@ -1757,15 +2040,15 @@ pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la 
 pred_xgb_df$error_xgb1 <- pred_xgb_df$pred_xgb -pred_xgb_df$price
 pred_xgb_df$compra_xgb1 <- decision_compra(pred_xgb_df$pred_xgb,pred_xgb_df$error_xgb1)
 
-resumen_modelos[1,1] <- "XGBoost 1"
-resumen_modelos[1,2] <- sum(predicciones$compra_xgb1)
-resumen_modelos[1,3] <- sum(predicciones$compra_xgb1>0)
-resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
-resumen_modelos[1,5] <- sum(predicciones$error_xgb1^2)
+resumen_modelos[2,1] <- "XGBoost 1"
+resumen_modelos[2,2] <- sum(pred_xgb_df$compra_xgb1)
+resumen_modelos[2,3] <- sum(pred_xgb_df$compra_xgb1>0)
+resumen_modelos[2,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
+resumen_modelos[2,5] <- sum(pred_xgb_df$error_xgb1^2)
 
 
 end_xg <- Sys.time()
-start_xg-end_xg
+end_xg - start_xg
 
 
 nrow(Tr_test_med)-nrow(pred_tree_df)
