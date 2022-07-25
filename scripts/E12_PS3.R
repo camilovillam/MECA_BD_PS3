@@ -509,6 +509,9 @@ train_prop_sf = train_prop_sf %>%
 
 sum(table(train_prop_sf$new_rooms))
 
+###Ahora se elimina la unidad de medida para que quede solo el número de cuartos (aposentos)
+
+train_prop_sf$new_rooms<-gsub("aposento", "", train_prop_sf$new_rooms)
 
 ##Baños
 
@@ -591,6 +594,8 @@ train_prop_sf = train_prop_sf %>%
   mutate(new_bathroom = ifelse(is.na(new_bathroom)==T,
                               str_extract(string=train_prop_sf$description , pattern= patronb2),
                               new_bathroom))
+
+sum(table(train_prop_sf$new_bathroom))
 
 ###Ahora se elimina la unidad de medida para que quede solo el número de baño
 
@@ -826,6 +831,89 @@ sum(table(test_prop_sf$new_surface))
 ###Ahora se elimina la unidad de medida para que quede solo que el número de metros de la vivienda
 
 test_prop_sf$new_surface<-gsub("mt2", "", test_prop_sf$new_surface)
+
+##VARIABLE ROOMS
+
+##Se estandariza para llamar a las habitaciones y parecidos como "aposento"
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habitaciones" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habitacion" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habitación" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habitacin" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "alcobas" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "alcoba" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "dormitorios" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "dormitorio" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "cuartos" , 
+                                            replacement = "aposento")
+
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "cuarto" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habs" , 
+                                            replacement = "aposento")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "hab" , 
+                                            replacement = "aposento")
+
+
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patronapo_1 = "[:space:]+[:digit:]+[:space:]+aposento"
+patronapo_2 ="[:space:]+[:digit:]+aposento"
+patronapo_3 = "[:digit:]+aposento"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_rooms = str_extract(string=test_prop_sf$description , pattern= patronapo_1))
+table(test_prop_sf$new_rooms)
+
+sum(table(test_prop_sf$new_rooms))
+
+##Patrón 2
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_rooms = ifelse(is.na(new_rooms)==T,
+                            str_extract(string=test_prop_sf$description , pattern= patronapo_2),
+                            new_rooms))
+
+sum(table(test_prop_sf$new_rooms))
+
+#Patrón 3
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_rooms = ifelse(is.na(new_rooms)==T,
+                            str_extract(string=test_prop_sf$description , pattern= patronapo_3),
+                            new_rooms))
+
+sum(table(test_prop_sf$new_rooms))
+
+###Ahora se elimina la unidad de medida para que quede solo el número de cuartos (aposentos)
+
+test_prop_sf$new_rooms<-gsub("aposento", "", test_prop_sf$new_rooms)
 
 ####OTRA VARIABLE
 
