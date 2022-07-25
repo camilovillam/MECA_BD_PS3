@@ -278,216 +278,10 @@ table(duplicated(test_med[,1]))
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# 4. ENSAYO: MAPA Y MEDICIÓN DE DISTANCIA ----
+# 4. MANZANAS BOGOTÁ Y OTRAS VARIABLES ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
-#Cargar las ciclovias (solo para ensayar)
-
-ciclovias <- read_sf("./stores/Ciclovia/Ciclovia.shp")
-
-ggplot()+
-  geom_sf(data=ciclovias) +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-upla<-read_sf("./stores/upla/UPla.shp")
-
-
-sitios_ref <- data.frame(place="Uniandes",
-                         lat=4.601590,
-                         long=-74.066391,
-                         nudge_y=-0.001)
-
-sitios_ref <- sitios_ref %>% mutate(latp=lat,longp=long)
-
-sitios_ref <- st_as_sf(sitios_ref,coords=c('longp','latp'),crs=4326)
-
-
-#Graficar Bogotá con las ciclovías en azul y Uniandes como punto de referencia:
-
-ggplot()+
-  geom_sf(data=upla
-          %>% filter(grepl("RIO",UPlNombre)==FALSE),
-          fill = NA) +
-  geom_sf(data=sitios_ref, col="red") +
-  geom_sf(data=ciclovias, col="blue") +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-#Ejemplo de 6 sitios de la base de datos de Train (subset):
-
-prop_subset <- head(train_prop)
-
-prop_subset <- prop_subset %>% mutate(latp=lat,longp=lon)
-prop_subset <- st_as_sf(prop_subset,coords=c('longp','latp'),crs=4326)
-
-
-#Medición de distancias de las propiedades a Uniandes:
-
-prop_subset$dist_a_Uniandes <-st_distance(prop_subset,sitios_ref)
-
-
-#Se grafican las 6 propiedades en el mapa (junto con ciclovías y Uniandes, por ensayar)
-
-ggplot()+
-  geom_sf(data=upla
-          %>% filter(grepl("RIO",UPlNombre)==FALSE),
-          fill = NA) +
-  geom_sf(data=sitios_ref, col="red") +
-  geom_sf(data=ciclovias, col="blue") +
-  geom_sf(data=prop_subset, col="orange") +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-
-#Cargar localidades:
-
-loc_bog <- read_sf("./stores/localidades_Bog_shp/Loca.shp")
-
-
-#Se transforma toda la base de datos de Train y test:
-
-train_prop <- train_prop %>% mutate(latp=lat,longp=lon)
-train_prop <- st_as_sf(train_prop ,coords=c('longp','latp'),crs=4326)
-
-test_prop <- test_prop %>% mutate(latp=lat,longp=lon)
-test_prop <- st_as_sf(test_prop ,coords=c('longp','latp'),crs=4326)
-
-
-#Validar los sistemas de coordenadas de los objetos:
-
-st_crs(ciclovias)
-st_crs(prop_subset)
-st_crs(sitios_ref)
-st_crs(upla)
-st_crs(loc_bog)
-st_crs(train_prop)
-
-ciclovias
-prop_subset
-sitios_ref
-upla
-loc_bog
-train_prop
-
-#Transformar todos los sistemas de coordenadas a 4326
-ciclovias<-st_transform(ciclovias, 4326)
-prop_subset<-st_transform(prop_subset, 4326)
-sitios_ref<-st_transform(sitios_ref, 4326)
-upla<-st_transform(upla, 4326)
-loc_bog<-st_transform(loc_bog, 4326)
-
-
-
-#Se grafican las propiedades en el mapa (junto con ciclovías y Uniandes, por ensayar)
-
-ggplot()+
-  geom_sf(data=upla
-          %>% filter(grepl("RIO",UPlNombre)==FALSE),
-          fill = NA) +
-  geom_sf(data=loc_bog
-          %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
-          fill = "gray")+
-  geom_sf(data=sitios_ref, col="red") +
-  geom_sf(data=ciclovias, col="blue") +
-  geom_sf(data=prop_subset, col="green") +
-  geom_sf(data=test_prop
-          %>% filter(grepl("Cundinamarca",l2)==TRUE),
-          col="orange",
-          size=1) +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-#Solo Chapinero:
-
-ggplot()+
-  geom_sf(data=loc_bog
-          %>% filter(grepl("CHAPINERO",LocNombre)==TRUE),
-          fill = NA)+
-  geom_sf(data=test_prop
-          %>% filter(grepl("Cundinamarca",l2)==TRUE),
-          col="orange",
-          size=1) +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
-
-
-#Ensayos con Leaflet:
-
-leaflet() %>% addTiles() %>% addCircleMarkers(data=test_prop)
-leaflet() %>% addTiles() %>% addCircles(data=test_prop)
-leaflet() %>% addTiles() %>% addPolylines(data=ciclovias)
-leaflet() %>% addTiles() %>% addPolygons(data=loc_bog)
-
-#Solo Chapinero
-
-leaflet() %>% addTiles() %>% addPolygons(data=loc_bog%>% filter(grepl("CHAPINERO",LocNombre)==TRUE))
-
-
-#Propiedades de Test
-
-leaflet() %>% addTiles() %>% 
-  addPolygons(data=loc_bog %>% 
-                filter(grepl("CHAPINERO",LocNombre)==TRUE)) %>% 
-  addCircleMarkers(data=test_prop %>%
-                     filter(grepl("Cundinamarca",l2)==TRUE),
-                   col="red")
-
-
-#Ensayos adicionales:
-
-#Buscar sitio por nombre
-
-uniandes <- geocode_OSM("Universidad de los Andes, Bogotá", as.sf=T)
-uniandes
-
-leaflet() %>% addTiles() %>% addCircles(data=uniandes)
-uniandes <- st_transform(uniandes, 4326)
-
-
-#Features:
-
-available_features() %>% head(50)
-
-
-#Estaciones de metro en Medellín:
-
-## objeto osm
-metromed  <-  opq(bbox = getbb("Medellín Colombia")) %>%
-  add_osm_feature(key="public_transport" , value="station") 
-
-metromed_sf <- metromed %>% osmdata_sf()
-metromed_sf
-metromed_station  <-  metromed_sf$osm_points
-
-leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
-
-
-
-
-
-
-#MANZ BOG ----
+#MANZANAS BOG ----
 
 loc_bog <- read_sf("./stores/localidades_Bog_shp/Loca.shp")
 loc_bog<-st_transform(loc_bog, 4326)
@@ -704,7 +498,41 @@ table(duplicated(test_bog_for[,1]))
 test_bog_for$geometry <- NULL
 test_bog_manz <- test_bog_for[,c("property_id","MANCODIGO")]
 saveRDS(test_bog_manz,"./stores/Bogota/test_bog_manz.rds")
-  
+
+
+
+###Variable adicional: Estrato ----
+
+#Cargo las bases de datos:
+
+train_bog_manz <- import("./stores/Bogota/train_bog_manz.rds")
+test_bog_manz <- import("./stores/Bogota/test_bog_manz.rds")
+
+
+
+#Cargo las siguientes bases:
+
+estrato_bog <-read_sf("./stores/Bogota/manzanaestratificacion/ManzanaEstratificacion.shp") # Subir el avaluo de las manzanas de Bogotá D.C.
+
+#Las transformo en DF:
+
+estrato_bog$geometry <- NULL
+
+colnames(estrato_bog)
+colnames(train_bog_manz)
+
+
+estrato_bog$MANCODIGO <- estrato_bog$CODIGO_MAN
+
+#Join para las BD:
+
+train_bog_manz <- left_join(train_bog_manz,estrato_bog[,c("MANCODIGO","ESTRATO")],by="MANCODIGO")
+test_bog_manz <- left_join(test_bog_manz,estrato_bog[,c("MANCODIGO","ESTRATO")],by="MANCODIGO")
+
+colSums(is.na(train_bog_manz))
+colSums(is.na(test_bog_manz))
+
+
   
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 5. MODELO BOGOTÁ D.C. ----
