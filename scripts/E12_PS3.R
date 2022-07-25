@@ -871,10 +871,14 @@ test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "
                                             replacement = "aposento")
 
 
-train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "hab" , 
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "hab" , 
                                             replacement = "aposento")
 
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "room" , 
+                                           replacement = "aposento")
 
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "rooms" , 
+                                           replacement = "aposento")
 ##Ahora se crean los patrones
 
 #Se crean patrones para extraer los baños de la vivienda, de la variable descripción
