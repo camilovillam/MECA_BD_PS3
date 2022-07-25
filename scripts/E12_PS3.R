@@ -420,7 +420,95 @@ sum(table(train_prop_sf$new_surface))
 
 train_prop_sf$new_surface<-gsub("mt2", "", train_prop_sf$new_surface)
 
-####OTRA VARIABLE
+
+#####OTRA VARIABLE #####
+
+##Número de cuartos
+
+#Se ven los Na's para determinar cuál se interviene
+
+table(is.na(train_prop$bedrooms))
+table(is.na(train_prop$rooms))
+
+##VARIABLE ROOMS
+
+##Se estandariza para llamar a las habitaciones y parecidos como "aposento"
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habitaciones" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habitacion" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habitación" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habitacin" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "alcobas" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "alcoba" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "dormitorios" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "dormitorio" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cuartos" , 
+                                            replacement = "aposento")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cuarto" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habs" , 
+                                            replacement = "aposento")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "hab" , 
+                                            replacement = "aposento")
+
+
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patronapo1 = "[:space:]+[:digit:]+[:space:]+aposento"
+patronapo2 ="[:space:]+[:digit:]+aposento"
+patronapo3 = "[:digit:]+aposento"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_rooms = str_extract(string=train_prop_sf$description , pattern= patronapo1))
+table(train_prop_sf$new_rooms)
+
+sum(table(train_prop_sf$new_rooms))
+
+##Patrón 2
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_rooms = ifelse(is.na(new_rooms)==T,
+                            str_extract(string=train_prop_sf$description , pattern= patronapo2),
+                            new_rooms))
+
+sum(table(train_prop_sf$new_rooms))
+
+#Patrón 3
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_rooms = ifelse(is.na(new_rooms)==T,
+                            str_extract(string=train_prop_sf$description , pattern= patronapo3),
+                            new_rooms))
+
+sum(table(train_prop_sf$new_rooms))
+
 
 ##Baños
 
