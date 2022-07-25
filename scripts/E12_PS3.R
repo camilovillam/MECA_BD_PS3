@@ -1993,7 +1993,7 @@ resumen_modelos[1,1] <- "Tree 1"
 resumen_modelos[1,2] <- sum(pred_tree_df$compra_tree1)
 resumen_modelos[1,3] <- sum(pred_tree_df$compra_tree1>0)
 resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
-resumen_modelos[1,5] <- sum(pred_tree_df$error_tree1^2)
+resumen_modelos[1,5] <- mean(pred_tree_df$error_tree1^2)
 
 rm(pred_tree_df)
 
@@ -2044,7 +2044,7 @@ resumen_modelos[2,1] <- "XGBoost 1"
 resumen_modelos[2,2] <- sum(pred_xgb_df$compra_xgb1)
 resumen_modelos[2,3] <- sum(pred_xgb_df$compra_xgb1>0)
 resumen_modelos[2,4] <- resumen_modelos[2,2] / resumen_modelos[2,3]
-resumen_modelos[2,5] <- sum(pred_xgb_df$error_xgb1^2)
+resumen_modelos[2,5] <- mean(pred_xgb_df$error_xgb1^2)
 
 
 end_xg <- Sys.time()
@@ -2113,7 +2113,7 @@ resumen_modelos[3,1] <- "Tree 2"
 resumen_modelos[3,2] <- sum(pred_tree2_df$compra_tree2)
 resumen_modelos[3,3] <- sum(pred_tree2_df$compra_tree2>0)
 resumen_modelos[3,4] <- resumen_modelos[3,2] / resumen_modelos[3,3]
-resumen_modelos[3,5] <- sum(pred_tree2_df$error_tree2^2)
+resumen_modelos[3,5] <- mean(pred_tree2_df$error_tree2^2)
 
 rm(pred_tree2_df)
 
@@ -2173,7 +2173,7 @@ resumen_modelos[4,1] <- "XGBoost 2"
 resumen_modelos[4,2] <- sum(pred_xgb2_df$compra_xgb2)
 resumen_modelos[4,3] <- sum(pred_xgb2_df$compra_xgb2>0)
 resumen_modelos[4,4] <- resumen_modelos[4,2] / resumen_modelos[4,3]
-resumen_modelos[4,5] <- sum(pred_xgb2_df$error_xgb2^2)
+resumen_modelos[4,5] <- mean(pred_xgb2_df$error_xgb2^2)
 
 
 end_xg <- Sys.time()
