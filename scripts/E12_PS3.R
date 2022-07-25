@@ -1995,7 +1995,7 @@ resumen_modelos[1,3] <- sum(pred_tree_df$compra_tree1>0)
 resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
 resumen_modelos[1,5] <- sum(pred_tree_df$error_tree1^2)
 
-
+rm(pred_tree_df)
 
 ###Modelo XGBoost ----
 
@@ -2032,7 +2032,7 @@ colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de 
 
 #Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
 pred_xgb_df <- cbind(filter(Tr_test_med[,c("property_id","price","COD_CAT_US")],
-                            !(is.na(Tr_test_med$COD_CAT_US))), #Filtra obs de la var con NAs
+                            !(is.na(Tr_test_med$ESTRATO))), #Filtra obs de la var con NAs
                      pred_xgb_df)
 pred_xgb_df$geometry <- NULL #Elimino geometría
 pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
@@ -2043,7 +2043,7 @@ pred_xgb_df$compra_xgb1 <- decision_compra(pred_xgb_df$pred_xgb,pred_xgb_df$erro
 resumen_modelos[2,1] <- "XGBoost 1"
 resumen_modelos[2,2] <- sum(pred_xgb_df$compra_xgb1)
 resumen_modelos[2,3] <- sum(pred_xgb_df$compra_xgb1>0)
-resumen_modelos[2,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
+resumen_modelos[2,4] <- resumen_modelos[2,2] / resumen_modelos[2,3]
 resumen_modelos[2,5] <- sum(pred_xgb_df$error_xgb1^2)
 
 
@@ -2054,22 +2054,20 @@ end_xg - start_xg
 nrow(Tr_test_med)-nrow(pred_tree_df)
 colSums(is.na(Tr_test_med))
 
-
-
-
+rm(pred_xgb_df)
 
 #### ENSAYO 2
 
 form_tree2 <- as.formula("price ~ 
-                        bedrooms + 
-                        ESTRATO + 
-                        COD_CAT_US + 
-                        COD_SUBCAT + 
-                        dist_metro + 
-                        dist_hosp + 
-                        dist_ccomerc + 
-                        dist_park + 
-                        area_OIME_median")
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          factor(ESTRATO) + 
+                          area_apto + 
+                          dist_metro + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
 
 
 #cp_alpha<-seq(from = 0, to = 0.1, length = 10)
@@ -2090,8 +2088,34 @@ tree2 <- train(
 
 tree2
 rpart.plot::prp(tree2$finalModel)
+
+
+#Cálculo del índice desempeño del modelo:
 pred_tree2 <- predict(tree2,Tr_test_med)
-pred_tree_df2 <- data.frame(pred_tree2)
+pred_tree2_df <- data.frame(pred_tree2)
+
+
+#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
+nrow(Tr_test_med) - nrow(pred_tree2_df) #Dif. entre la base y el num de predicciones
+colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
+
+#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
+pred_tree2_df <- cbind(filter(Tr_test_med[,c("property_id","price")],
+                             !(is.na(Tr_test_med$ESTRATO))), #Filtra obs de la var con NAs
+                      pred_tree2_df)
+pred_tree2_df$geometry <- NULL #Elimino geometría
+pred_tree2_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
+
+pred_tree2_df$error_tree2 <- pred_tree2_df$pred_tree2 -pred_tree2_df$price
+pred_tree2_df$compra_tree2 <- decision_compra(pred_tree2_df$pred_tree2,pred_tree2_df$error_tree2)
+
+resumen_modelos[3,1] <- "Tree 2"
+resumen_modelos[3,2] <- sum(pred_tree2_df$compra_tree2)
+resumen_modelos[3,3] <- sum(pred_tree2_df$compra_tree2>0)
+resumen_modelos[3,4] <- resumen_modelos[3,2] / resumen_modelos[3,3]
+resumen_modelos[3,5] <- sum(pred_tree2_df$error_tree2^2)
+
+rm(pred_tree2_df)
 
 
 
@@ -2122,48 +2146,86 @@ xgboost2 <- train(
 
 xgboost2
 pred_xgb2 <- predict(xgboost2,Tr_test_med)
-pred_xgb_df2 <- data.frame(pred_xgb2)
+pred_xgb2_df <- data.frame(pred_xgb2)
 
 end_xg <- Sys.time()
 start_xg-end_xg
 
 
-predicciones <- cbind(predicciones,pred_tree_df2,pred_xgb_df2)
-predicciones$geometry <- NULL
 
-#export(predicciones,"./views/ensayo_predicc_med.xlsx")
+#Cálculo del índice desempeño del modelo:
 
+#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
+nrow(Tr_test_med) - nrow(pred_xgb2_df) #Dif. entre la base y el num de predicciones
+colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
 
-#Cálculo del índice de los modelos ----
+#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
+pred_xgb2_df <- cbind(filter(Tr_test_med[,c("property_id","price","COD_CAT_US")],
+                            !(is.na(Tr_test_med$ESTRATO))), #Filtra obs de la var con NAs
+                     pred_xgb2_df)
+pred_xgb2_df$geometry <- NULL #Elimino geometría
+pred_xgb2_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
 
-#Por ahora manual, luego se generaliza.
-#HAY QUE TENER CUIDADO CON EL NÚMERO DE OBSERVACIONES, 
-#DEPENDIENDO DE LAS VARS USADAS
+pred_xgb2_df$error_xgb2 <- pred_xgb2_df$pred_xgb2 -pred_xgb2_df$price
+pred_xgb2_df$compra_xgb2 <- decision_compra(pred_xgb2_df$pred_xgb2,pred_xgb2_df$error_xgb2)
 
-predicciones_val <- predicciones
-
-predicciones_val$property_id <- NULL
-predicciones_val$description <- NULL
-
-
-#Cálculo de la  matriz de diferencias
-predicciones_difs <- data.frame(lapply(predicciones[c(colnames(predicciones_val))], 
-                            function(x) x - predicciones_val$price))
-
-predicciones_difs <- data.frame(lapply(predicciones_val, 
-                                       function(x) x - predicciones_val$price))
+resumen_modelos[4,1] <- "XGBoost 2"
+resumen_modelos[4,2] <- sum(pred_xgb2_df$compra_xgb2)
+resumen_modelos[4,3] <- sum(pred_xgb2_df$compra_xgb2>0)
+resumen_modelos[4,4] <- resumen_modelos[4,2] / resumen_modelos[4,3]
+resumen_modelos[4,5] <- sum(pred_xgb2_df$error_xgb2^2)
 
 
-#Cálculo del valor gastado si se da la compra:
-
-calculo_gasto_compra <- function(x) case_when(x > 0 ~ x,
-                                              abs(x) < 40000000 ~ x,
-                                              abs(x) < 40000000 ~ 0)
-
-predicciones_gasto <- data.frame(lapply(predicciones_difs, 
-                                       function(x) calculo_gasto_compra))
+end_xg <- Sys.time()
+end_xg - start_xg
 
 
+rm(pred_xgb2_df)
+
+
+export(resumen_modelos,"./views/Resumen_modelos1.xlsx")
+
+
+
+
+# ###MALO
+# 
+# predicciones <- cbind(predicciones,pred_tree_df2,pred_xgb_df2)
+# predicciones$geometry <- NULL
+# 
+# #export(predicciones,"./views/ensayo_predicc_med.xlsx")
+# 
+# 
+# #Cálculo del índice de los modelos ----
+# 
+# #Por ahora manual, luego se generaliza.
+# #HAY QUE TENER CUIDADO CON EL NÚMERO DE OBSERVACIONES, 
+# #DEPENDIENDO DE LAS VARS USADAS
+# 
+# predicciones_val <- predicciones
+# 
+# predicciones_val$property_id <- NULL
+# predicciones_val$description <- NULL
+# 
+# 
+# #Cálculo de la  matriz de diferencias
+# predicciones_difs <- data.frame(lapply(predicciones[c(colnames(predicciones_val))], 
+#                             function(x) x - predicciones_val$price))
+# 
+# predicciones_difs <- data.frame(lapply(predicciones_val, 
+#                                        function(x) x - predicciones_val$price))
+# 
+# 
+# #Cálculo del valor gastado si se da la compra:
+# 
+# calculo_gasto_compra <- function(x) case_when(x > 0 ~ x,
+#                                               abs(x) < 40000000 ~ x,
+#                                               abs(x) < 40000000 ~ 0)
+# 
+# predicciones_gasto <- data.frame(lapply(predicciones_difs, 
+#                                        function(x) calculo_gasto_compra))
+# 
+# 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
