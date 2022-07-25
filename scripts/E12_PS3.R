@@ -804,8 +804,20 @@ ggplot()+
 
 ##5.4. Bases Train para pruebas de modelos ----
 
-train_bog <-readRDS("./stores/20220724_train_bog.rds") 
-test_bog <-readRDS("./stores/20220724_test_bog.rds")
+train_bog <-readRDS("./stores/20220724_train_bog_p.rds") 
+test_bog <-readRDS("./stores/20220724_test_bog_p.rds")
+
+train_bog_parques <-readRDS("./stores/Bogota/train_bog_parques.rds") 
+test_bog_parques <-readRDS("./stores/Bogota/test_bog_parques.rds")
+
+
+train_bog$dist_park <- train_bog_parques$dist_park
+test_bog$dist_park <- test_bog_parques$dist_park
+
+saveRDS(train_bog, "stores/20220724_train_bog_p.rds")
+saveRDS(test_bog, "stores/20220724_test_bog_p.rds")
+
+
 
 ###5.4.1. Base de chapinero ----
 
@@ -1039,6 +1051,19 @@ control <- trainControl(method = "cv", number = 5,
                         verbose=FALSE,
                         savePredictions = T)
 
+#Función para calcular la decisión de compra --- organizar donde subirlo
+#Entrada: decis_compra(x=valores_predichos,y=error)
+
+decision_compra <- function(x,y) case_when(y > 0 ~ x,
+                                           abs(y) < 40000000 ~ x,
+                                           abs(y) > 40000000 ~ 0)
+
+### Matriz de desempeño de los modelos:----
+
+resumen_modelos <- data.frame(matrix(rep(0,75),nrow=15,ncol=5))
+colnames(resumen_modelos) <- c("Modelo","Dinero_gastado","Prop_compradas","Precio_prom_compr","MSE_test")
+sapply(resumen_modelos, typeof)
+
 ###5.6.3. XGBoost 1 ----
 
 xgb_bog1 <- as.formula (price ~ 
@@ -1090,14 +1115,14 @@ pred_xgb_df <- cbind (Tr_test_bog[,c("property_id","price")], pred_xgb_df)
 pred_xgb_df$geometry <- NULL #Elimino geometría
 #pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
 
-#pred_xgb_df$error_xgb1 <- pred_xgb_df$pred_xgb -pred_xgb_df$price
-#pred_xgb_df$compra_xgb1 <- decision_compra(pred_xgb_df$pred_xgb,pred_xgb_df$error_xgb1)
+pred_xgb_df$error_xgb1 <- pred_xgb_df$pred_xgb -pred_xgb_df$price
+pred_xgb_df$compra_xgb1 <- decision_compra(pred_xgb_df$pred_xgb,pred_xgb_df$error_xgb1)
 
-#resumen_modelos[1,1] <- "XGBoost 1"
-#resumen_modelos[1,2] <- sum(predicciones$compra_xgb1)
-#resumen_modelos[1,3] <- sum(predicciones$compra_xgb1>0)
-#resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
-#resumen_modelos[1,5] <- sum(predicciones$error_xgb1^2)
+resumen_modelos[1,1] <- "XGBoost_Bog 1"
+resumen_modelos[1,2] <- sum(predicciones$compra_xgb1)
+resumen_modelos[1,3] <- sum(predicciones$compra_xgb1>0)
+resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
+resumen_modelos[1,5] <- sum(predicciones$error_xgb1^2)
 
 
 #Determinar si es compra o no el inmueble
