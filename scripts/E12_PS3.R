@@ -489,6 +489,8 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
 
 #MANZ BOG ----
 
+loc_bog <- read_sf("./stores/localidades_Bog_shp/Loca.shp")
+loc_bog<-st_transform(loc_bog, 4326)
 
 mz_bog <-read_sf("./stores/Bogota/manz_shp/MANZ.shp") # Subir las manzanas de Bogotá D.C.
 mz_bog     <-st_transform(mz_bog, 4326)
@@ -544,10 +546,148 @@ test_bog_mz_na <- filter(test_bog_loc,is.na(test_bog_loc$MANCODIGO))
 
 train_bog_mz_na$MANCODIGO <- NULL
 
+table(train_bog_mz_na$LocNombre)
+table(mz_bog_loc$LocNombre)
+
+#Dividir las bases de datos por localidad:
+
+train_bog_mz_na_list <- split(train_bog_mz_na, f = train_bog_mz_na$LocNombre)
+mz_bog_loc_list <- split(mz_bog_loc, f = mz_bog_loc$LocNombre)
+
+#Correr para vecinos: Ensayo Chapinero
+start_train = Sys.time()
+train_bog_mz_na_chap <- st_join(train_bog_mz_na_list[[5]],mz_bog_loc_list[[5]][,c('MANCODIGO')],
+                                   join = st_nn, k = 1, maxdist = 50, parallel=8)
+end_train = Sys.time()
+end_train - start_train
+
+nrow(train_bog_mz_na_chap)
+colSums(is.na(train_bog_mz_na_chap))
+
+
+#Correr para vecinos: SUBA
+start_train = Sys.time()
+train_bog_mz_na_suba <- st_join(train_bog_mz_na_list[[15]],mz_bog_loc_list[[15]][,c('MANCODIGO')],
+                                join = st_nn, k = 1, maxdist = 50, parallel=8)
+end_train = Sys.time()
+end_train - start_train
+
+nrow(train_bog_mz_na_suba)
+colSums(is.na(train_bog_mz_na_suba))
+
+
+#Correr para vecinos: Ciclo FOR todas las localidades
+
+#Lista de resultados:
+
+train_bog_mz_na_result_list <- vector("list",20)
+
+#Inicio del For
+start_for = Sys.time()
+
+
+for (i in 1:length(train_bog_mz_na_list)){
+  
+  start_train = Sys.time()
+  
+  train_bog_mz_na_result_list[[i]] <- st_join(train_bog_mz_na_list[[i]],mz_bog_loc_list[[i]][,c('MANCODIGO')],
+                                  join = st_nn, k = 1, maxdist = 50, parallel=8)
+
+  end_train = Sys.time()
+  
+  print(i)
+  
+  print(nrow(train_bog_mz_na_result_list[[i]]))
+  
+  print(colSums(is.na(train_bog_mz_na_result_list[[i]])))
+  
+  print(end_train - start_train)
+  
+}
+
+end_for = Sys.time()
+
+end_for - start_for
+
+
+train_bog_mz_na_for <- bind_rows(train_bog_mz_na_result_list, .id = "id_lista_localid")
+
+train_bog_mz_na_for$id_lista_localid <- NULL
+
+nrow(train_bog_mz_na_for)
+colSums(is.na(train_bog_mz_na_for))
+
+#Se une toda la base
+
+colSums(is.na(train_bog))
+train_bog_for <- rbind(train_bog_mz_ok,train_bog_mz_na_for)
+
+colSums(is.na(train_bog_for))
+nrow(train_bog_for)
+
+#Si son varios NAs,se puede hacer otra corrida con los NA que quedan y la base completa.
+#Creo que eso ayudaría, por vecinos.
+#Se puede intentar:
+
+
+#Dividir entre OK y no OK.
+train_bog_for_ok <- filter(train_bog_for,!(is.na(train_bog_for$MANCODIGO)))
+train_bog_for_na <- filter(train_bog_for,is.na(train_bog_for$MANCODIGO))
+
+
+train_bog_for_na$MANCODIGO <- NULL
+
+start_train = Sys.time()
+train_bog_for_na <- st_join(train_bog_for_na,mz_bog_loc[,c('MANCODIGO')],
+                                            join = st_nn, k = 1, maxdist = 50, parallel=8)
+end_train = Sys.time()
+
+
+#Se une toda la base
+
+colSums(is.na(train_bog))
+train_bog_for <- rbind(train_bog_for_ok,train_bog_for_na)
+
+colSums(is.na(train_bog_for))
+nrow(train_bog_for)
+
+
+#Guardar la base resultante:
+
+train_bog_for$geometry <- NULL
+train_bog_manz <- train_bog_for[,c("property_id","MANCODIGO")]
+saveRDS(train_bog_manz,"./stores/Bogota/train_bog_manz.rds")
 
 
 
 
+#Para test, se puede hacer toda junta, es pequeña:
+
+test_bog_mz_na$MANCODIGO <- NULL
+
+start_test = Sys.time()
+test_bog_mz_na <- st_join(test_bog_mz_na,mz_bog_loc[,c('MANCODIGO')],
+                            join = st_nn, k = 1, maxdist = 50, parallel=8)
+end_test = Sys.time()
+
+end_test - start_test
+
+#Se une toda la base de test
+
+colSums(is.na(test_bog))
+test_bog_for <- rbind(test_bog_mz_ok,test_bog_mz_na)
+
+colSums(is.na(test_bog_for))
+nrow(test_bog_for)
+
+
+#Guardar la base resultante:
+
+test_bog_for$geometry <- NULL
+test_bog_manz <- test_bog_for[,c("property_id","MANCODIGO")]
+saveRDS(test_bog_manz,"./stores/Bogota/test_bog_manz.rds")
+  
+  
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 5. MODELO BOGOTÁ D.C. ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
