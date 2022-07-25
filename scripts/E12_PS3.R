@@ -616,14 +616,17 @@ train_bog_mz_na_for$id_lista_localid <- NULL
 
 nrow(train_bog_mz_na_for)
 colSums(is.na(train_bog_mz_na_for))
+(562/nrow(train_bog_mz_na_for))*100
 
 #Se une toda la base
 
-colSums(is.na(train_bog))
+nrow(train_bog)
 train_bog_for <- rbind(train_bog_mz_ok,train_bog_mz_na_for)
 
 colSums(is.na(train_bog_for))
 nrow(train_bog_for)
+
+
 
 #Si son varios NAs,se puede hacer otra corrida con los NA que quedan y la base completa.
 #Creo que eso ayudaría, por vecinos.
@@ -631,25 +634,35 @@ nrow(train_bog_for)
 
 
 #Dividir entre OK y no OK.
-train_bog_for_ok <- filter(train_bog_for,!(is.na(train_bog_for$MANCODIGO)))
-train_bog_for_na <- filter(train_bog_for,is.na(train_bog_for$MANCODIGO))
+# train_bog_for_ok <- filter(train_bog_for,!(is.na(train_bog_for$MANCODIGO)))
+# train_bog_for_na <- filter(train_bog_for,is.na(train_bog_for$MANCODIGO))
+# 
+# 
+# train_bog_for_na$MANCODIGO <- NULL
+# 
+# start_train = Sys.time()
+# train_bog_for_na <- st_join(train_bog_for_na,mz_bog_loc[,c('MANCODIGO')],
+#                                             join = st_nn, k = 1, maxdist = 50, parallel=8)
+# end_train = Sys.time()
+# 
+# end_train-start_train
+# 
+# #No mejoró, se puede eliminar el anterior intento, se comenta.
+# 
+# #Se une toda la base
 
-
-train_bog_for_na$MANCODIGO <- NULL
-
-start_train = Sys.time()
-train_bog_for_na <- st_join(train_bog_for_na,mz_bog_loc[,c('MANCODIGO')],
-                                            join = st_nn, k = 1, maxdist = 50, parallel=8)
-end_train = Sys.time()
-
-
-#Se une toda la base
-
-colSums(is.na(train_bog))
-train_bog_for <- rbind(train_bog_for_ok,train_bog_for_na)
+# nrow(train_bog)
+# train_bog_for <- rbind(train_bog_for_ok,train_bog_for_na)
 
 colSums(is.na(train_bog_for))
 nrow(train_bog_for)
+
+#Eliminar duplicados resultantes del Join geográfico:
+
+table(duplicated(train_bog_for[,1]))
+train_bog_for <- distinct(train_bog_for,property_id, .keep_all = TRUE)
+table(duplicated(train_bog_for[,1]))
+
 
 
 #Guardar la base resultante:
@@ -679,6 +692,11 @@ test_bog_for <- rbind(test_bog_mz_ok,test_bog_mz_na)
 
 colSums(is.na(test_bog_for))
 nrow(test_bog_for)
+
+
+table(duplicated(test_bog_for[,1]))
+test_bog_for <- distinct(test_bog_for,property_id, .keep_all = TRUE)
+table(duplicated(test_bog_for[,1]))
 
 
 #Guardar la base resultante:
