@@ -1257,14 +1257,12 @@ compra_price_xgb2 <- pred_xgb_df2 %>%
 si_compra_pred_xgb_df2 <- compra_price_xgb2 %>%
   filter(compra_xgb2=="Compra")
 
-si_compra_price_xgb2 <- si_compra_pred_xgb_df$dinerocompra_price_xgb_02[[1]]
-
-
+si_compra_price_xgb2 <- si_compra_pred_xgb_df2$dinerocompra_price_xgb_02[[1]]
 
 #Resumen
 
-si_compra_pred_xgb
-si_compra_price_xgb
+si_compra_pred_xgb2
+si_compra_price_xgb2
 
 
 end_xg <- Sys.time()
