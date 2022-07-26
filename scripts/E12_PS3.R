@@ -3060,7 +3060,84 @@ rm(pred_tree_df)
 
 
 
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#10: ESTIMACIÓN MEJOR MODELO Y EXPORTACIÓN FINAL
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+
+#10.1. Corrección final de NAs en TEST para evitar la exclusión de observaciones:
+
+colSums(is.na(test))
+
+#Las dos observaciones sin estrato (ubicadas en el Río Medellín!) son 
+#problemáticas para la predicción.
+
+#Las otras dos variables con NAs(description y MANZANA) no se usan en este
+#punto de los modelos
+
+#Se les imputa Estrato 6:
+
+test_NA <- test[is.na(test$ESTRATO),]
+view(test_NA)
+
+test$ESTRATO[is.na(test$ESTRATO)] <- 6
+
+#validación:
+test[test$property_id == test_NA$property_id[1],c("property_id","ESTRATO")]
+test[test$property_id == test_NA$property_id[2],c("property_id","ESTRATO")]
+
+colSums(is.na(test))
+
+
+#10.2 Predicción del mejor escenario:
+
+#Dos posibles escenarios: 
+# 1) el mejor es modelo unificado.
+# 2) el mejor es la suma de un modelo de Bogotá + Medellín
+
+
+##10.1 Modelo unificado ---- 
+
+#Se carga el mejor modelo:
+#modelofinal <- readRDS("./stores/modelos_train/model.rds")
+
+#Se copia el objeto TRAIN del mejor modelo:
+modelofinal <- tree
+
+#Se predice el modelo en Test completo:
+pred_final <- predict(modelofinal,test)
+pred_final_df <- data.frame(pred_final)
+
+nrow(test) - nrow(pred_final_df)
+nrow(test)
+nrow(pred_final_df)
+
+
+submit <- data.frame(test$property_id)
+submit <- cbind(submit,pred_final_df)
+colnames(submit) <- c("property_id","price")
+nrow(submit)
+view(submit)
+
+export(submit,"./document/predictions_garcia_molano_villa.csv")
+
+
+# #Validación con TRAIN (por estar seguro)
+# 
+# #Se predice el modelo en Test completo:
+# pred_final_tr <- predict(modelofinal,train)
+# pred_final_tr_df <- data.frame(pred_final_tr)
+# 
+# nrow(train) - nrow(pred_final_tr_df)
+# nrow(train)
+# nrow(pred_final_tr_df)
+# 
+# 
+# submit_tr <- data.frame(train$property_id)
+# sumbit_tr$price <- train$price
+# submit_tr <- cbind(submit_tr,pred_final_tr_df)
+# nrow(submit)
+# 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
