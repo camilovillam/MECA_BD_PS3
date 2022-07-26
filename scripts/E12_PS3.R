@@ -66,6 +66,7 @@ setwd("~/GitHub/MECA_BD_PS3")
 train_prop <-readRDS("./stores/train.rds") #107.567 Obs
 test_prop <-readRDS("./stores/test.rds") #11.150 Obs
 
+
 table(duplicated(train_prop[,1]))
 table(duplicated(test_prop[,1]))
 
@@ -2378,11 +2379,118 @@ rm(list=c("OIME","props_med_ok","test_med_n","train_med_n",
 
 gc()
 
-## 6.6. REGRESIONES ----
+###############################################################
+#### 7. UNIFICACIÓN BASES DE DATOS MED Y BOG ----
+###############################################################
+
 
 test_med <- import("./stores/Medellín/test_med_compl.rds")
 train_med <- import("./stores/Medellín/train_med_compl.rds")
 
+test_bog <- import("./stores/Bogota/20220726_test_bog.rds")
+train_bog <- import("./stores/Bogota/20220726_train_bog.rds")
+
+colnames(test_bog)
+colnames(train_bog)
+colnames(test_med)
+colnames(train_med)
+
+colSums(is.na(test_med))
+colSums(is.na(train_med))
+
+all.equal(test_med$MANZANA,test_med$COBAMA)
+
+
+#Comparaciones bases de datos:
+
+
+compare_df_cols(test_bog, train_bog)
+compare_df_cols(test_med, train_med)
+
+#Test y train son iguales, excepto por price.
+
+
+#Comparación entre Medellín y Bogotá
+
+
+compare_df_cols(test_bog, test_med)
+compare_df_cols(train_bog, train_med)
+
+intersect(colnames(test_bog), colnames(test_med))
+intersect(colnames(train_bog), colnames(train_med))
+
+
+#Vars en Med, no en Bog:
+
+# AREAGRALUS
+# avaluo_total
+# BARRIO
+# COBAMA
+# MANZANA
+# SUBCATEGOR
+# avaluo_m2
+
+test_med$AVALUO_COM <- test_med$avaluo_m2
+train_med$AVALUO_COM <- train_med$avaluo_m2
+
+test_med$UPL <- test_med$BARRIO
+train_med$UPL <- train_med$BARRIO
+
+#Vars en Bog, no en Med:
+
+# AVALUO_CAT
+# AVALUO_COM
+# MANCODIGO
+# SECCODIGO
+# p_upl
+# t_puntos
+# UPlCodigo
+# UPlNombre
+
+test_bog$MANZANA <- test_bog$MANCODIGO
+train_bog$MANZANA <- train_bog$MANCODIGO
+
+test_bog$UPL <- test_bog$UPlNombre
+train_bog$UPL <- train_bog$UPlNombre
+
+
+
+#Se unen las filas por columnas comunes de Med y Bog
+test <- rbind(test_bog[intersect(colnames(test_bog), colnames(test_med))],
+              test_med[intersect(colnames(test_bog), colnames(test_med))])
+
+train <- rbind(train_bog[intersect(colnames(train_bog), colnames(train_med))],
+               train_med[intersect(colnames(train_bog), colnames(train_med))])
+
+
+nrow(test)  #11150
+nrow(train) #107567
+
+colSums(is.na(test))
+colSums(is.na(train))
+
+test[,c("rooms","bathrooms","surface_total","surface_covered")] <- list(NULL)
+train[,c("rooms","bathrooms","surface_total","surface_covered")] <- list(NULL)
+
+
+export(test,"./stores/test_compl.rds")
+export(train,"./stores/train_compl.rds")
+
+
+###############################################################
+#### 8. ESTADÍSTICAS DESCRIPTIVAS BASE UNIFICADA Y ENRIQUECIDA ----
+###############################################################
+
+
+
+
+
+
+
+
+###############################################################
+#### 9. REGRESIONES ----
+###############################################################
 
 
 ### PARTIR LAS BASES DE DATOS: TRAIN, EVAL, TEST.
