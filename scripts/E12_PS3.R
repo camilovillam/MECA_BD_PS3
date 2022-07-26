@@ -1187,6 +1187,8 @@ colSums(is.na(test_bog))
 ###5.4.2. Subir bases para modelos ----
 
 #Se suben ultimas versiones de las bases
+
+setwd("~/GitHub/MECA_BD_PS3")
 train_bog <-readRDS("./stores/20220726_train_bog.rds") 
 test_bog <-readRDS("./stores/20220726_test_bog.rds")
 
@@ -1220,7 +1222,7 @@ train_bog_modelos <- na.omit(train_bog_modelos)# Base de correr modelos
 #skim(train_cha2)
 
 
-###5.4.2 Partición de la base chapinero en tres----
+###5.4.2 Partición de la base en tres----
 
 #La base de datos Train se divide en tres particiones:
 # Tr_train: Entrenar el modelo
@@ -1450,7 +1452,7 @@ si_compra_price_m2
 si_compra_y3
 si_compra_price_m3
 
-###5.6.2. Definición del control (a usarse en los demás modelos) ----
+###5.6.2. Matriz de desempeño y control (a usarse en los demás modelos) ----
 
 ### Matriz de desempeño de los modelos:----
 resumen_modelos <- data.frame(matrix(rep(0,250),nrow=25,ncol=10))
@@ -1465,6 +1467,14 @@ decision_compra <- function(x,y) case_when(y > 0 ~ x,
                                            abs(y) < 40000000 ~ x,
                                            abs(y) > 40000000 ~ 0)
 
+#Definición del control (a usarse en los demás modelos)----
+#fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
+
+control <- trainControl(method = "cv", number = 5,
+                        #summaryFunction = fiveStats, 
+                        classProbs = TRUE,
+                        verbose=FALSE,
+                        savePredictions = T)
 
 ###5.6.3. XGBoost 1 ----
 
@@ -1520,11 +1530,11 @@ pred_xgb1_df$geometry <- NULL #Elimino geometría
 pred_xgb1_df$error_xgb1 <- pred_xgb1_df$pred_xgb1 - pred_xgb1_df$price
 pred_xgb1_df$compra_xgb1 <- decision_compra(pred_xgb1_df$pred_xgb1,pred_xgb1_df$error_xgb1)
 
-resumen_modelos[4,1] <- "XGBoost bog 1"
-resumen_modelos[4,2] <- sum(pred_xgb1_df$compra_xgb1)
-resumen_modelos[4,3] <- sum(pred_xgb1_df$compra_xgb1>0)
-resumen_modelos[4,4] <- resumen_modelos[4,2] / resumen_modelos[4,3]
-resumen_modelos[4,5] <- mean(pred_xgb1_df$error_xgb1^2)
+resumen_modelos[1,1] <- "XGBoost bog 1"
+resumen_modelos[1,2] <- sum(pred_xgb1_df$compra_xgb1)
+resumen_modelos[1,3] <- sum(pred_xgb1_df$compra_xgb1>0)
+resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
+resumen_modelos[1,5] <- mean(pred_xgb1_df$error_xgb1^2)
 
 
 end_xg <- Sys.time()
@@ -1587,17 +1597,17 @@ pred_xgb2_df$geometry <- NULL #Elimino geometría
 pred_xgb2_df$error_xgb2 <- pred_xgb2_df$pred_xgb2 - pred_xgb2_df$price
 pred_xgb2_df$compra_xgb2 <- decision_compra(pred_xgb2_df$pred_xgb2,pred_xgb2_df$error_xgb2)
 
-resumen_modelos[4,1] <- "XGBoost bog 2"
-resumen_modelos[4,2] <- sum(pred_xgb2_df$compra_xgb2)
-resumen_modelos[4,3] <- sum(pred_xgb2_df$compra_xgb2>0)
-resumen_modelos[4,4] <- resumen_modelos[4,2] / resumen_modelos[4,3]
-resumen_modelos[4,5] <- mean(pred_xgb2_df$error_xgb2^2)
+resumen_modelos[2,1] <- "XGBoost bog 2"
+resumen_modelos[2,2] <- sum(pred_xgb2_df$compra_xgb2)
+resumen_modelos[2,3] <- sum(pred_xgb2_df$compra_xgb2>0)
+resumen_modelos[2,4] <- resumen_modelos[2,2] / resumen_modelos[2,3]
+resumen_modelos[2,5] <- mean(pred_xgb2_df$error_xgb2^2)
 
 
 end_xg <- Sys.time()
 end_xg - start_xg
 
-rm(pred_xgb1_df)
+rm(pred_xgb2_df)
 
 export(resumen_modelos,"./views/Resumen_modelos_bog.xlsx")
 
