@@ -615,45 +615,95 @@ test_bog <- st_join(test_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM
 skim(train_bog)
 skim(test_bog)
 
-##Prueba vecinos ajustes manzanas ----
+##Prueba vecinos para estrato ----
 
 #Para train:
 
-
-#Dividir Train entre las que sí encontró manzana y los NA (al final se unen)
-train_bog_mz_ok <- filter(train_bog,!(is.na(train_bog$MANCODIGO)))
-train_bog_mz_na <- filter(train_bog,is.na(train_bog$MANCODIGO))
-
-train_bog_mz_na$MANCODIGO <- NULL
-
-train_bog_mz_na_muestra <- train_bog_mz_na[1:20, ]
-
 install.packages("nngeo")
 library(nngeo)
-start_train = Sys.time()
-train_bog_mz_na_muestra <- st_join(train_bog_mz_na_muestra,mz_bog[,c('MANCODIGO')],
-                             join = st_nn, k = 1, maxdist = 50, progress=TRUE)
-end_train = Sys.time()
-end_train - start_train
-
-colSums(is.na(train_bog_mz_na))
-
 install.packages("sfheaders")
 library(sfheaders)
 
-train_bog_mz_na_df <- sf_to_df(train_bog_mz_na, fill = TRUE, unlist = NULL)
-saveRDS(train_bog_mz_na_df,"./stores/Bogota/rds_calculados/MZ_train_NA.rds")
+#INTERSECCIONES ENTRE LOC y las bases de datos:
 
-colSums(is.na(train_bog))
-train_bog <- rbind(train_bog_mz_ok,train_bog_mz_na)
-colSums(is.na(train_bog))
+#Train. test. ESTRATO
+
+train_bog_loc <- st_join(train_bog,loc_bog)
+test_bog_loc <- st_join(test_bog,loc_bog)
+estrato_bog_loc <- st_join(estrato_bog,loc_bog)
+
+colnames(estrato_bog_loc)
+head(estrato_bog_loc)
+
+#Dividir entre OK y no OK.
+train_bog_estrato_ok <- filter(train_bog_loc,!(is.na(train_bog_loc$ESTRATO)))
+train_bog_estrato_na <- filter(train_bog_loc,is.na(train_bog_loc$ESTRATO))
+
+test_bog_estrato_ok <- filter(test_bog_loc,!(is.na(test_bog_loc$ESTRATO)))
+test_bog_estrato_na <- filter(test_bog_loc,is.na(test_bog_loc$ESTRATO))
+
+train_bog_estrato_na$ESTRATO <- NULL
+
+table(train_bog_estrato_na$LocNombre.x)
+table(estrato_bog_loc$LocNombre)
+
+#Dividir las bases de datos por localidad:
+
+train_bog_estrato_na_list <- split(train_bog_estrato_na, f = train_bog_estrato_na$LocNombre.x)
+estrato_bog_loc_list <- split(estrato_bog_loc, f = estrato_bog_loc$LocNombre)
+
+table(train_bog$LocNombre)
+
+#Correr para vecinos: Ciclo FOR todas las localidades
+
+#Lista de resultados:
+
+train_bog_mz_estrato_result_list <- vector("list",19)
+
+#Inicio del For
+start_for = Sys.time()
+
+
+for (i in 1:length(train_bog_estrato_na_list)){
+  
+  start_train = Sys.time()
+  
+  train_bog_estrato_na_result_list[[i]] <- st_join(train_bog_estrato_na_list[[i]],estrato_bog_loc_list[[i]][,c('ESTRATO')],
+                                              join = st_nn, k = 1, maxdist = 50, parallel=14)
+  
+  end_train = Sys.time()
+  
+  print(i)
+  
+  print(nrow(train_bog_estrato_na_result_list[[i]]))
+  
+  print(colSums(is.na(train_bog_estrato_na_result_list[[i]])))
+  
+  print(end_train - start_train)
+  
+}
+
+end_for = Sys.time()
+
+end_for - start_for
+
+
+train_bog_estrato_na_for <- bind_rows(train_bog_estrato_na_result_list, .id = "id_lista_localid")
+
+train_bog_estrato_na_for$id_lista_localid <- NULL
+
+nrow(train_bog_estrato_na_for)
+colSums(is.na(train_bog_estrato_na_for))
+(562/nrow(train_bog_estrato_na_for))*100#numero de na
+
+#Se une toda la base
 
 nrow(train_bog)
+train_bog_for <- rbind(train_bog_estrato_ok,train_bog_estrato_na_for)
 
-train_bog_mz_df <- sf_to_df(train_bog, fill = TRUE, unlist = NULL)
-saveRDS(train_bog_mz_df,"./stores/Bogota/rds_calculados/mz_train.rds")
+colSums(is.na(train_bog_for))
+nrow(train_bog_for)
 
-colSums(is.na(train_bog))
 
 ###5.1.2 Información de OpenSteetMap ----
 
@@ -804,8 +854,8 @@ ggplot()+
 
 ##5.4. Bases Train para pruebas de modelos ----
 
-train_bog <-readRDS("./stores/20220724_train_bog_p.rds") 
-test_bog <-readRDS("./stores/20220724_test_bog_p.rds")
+train_bog <-readRDS("./stores/20220724_train_bog.rds") 
+test_bog <-readRDS("./stores/20220724_test_bog.rds")
 
 train_bog_parques <-readRDS("./stores/Bogota/train_bog_parques.rds") 
 test_bog_parques <-readRDS("./stores/Bogota/test_bog_parques.rds")
