@@ -1115,18 +1115,35 @@ colSums(is.na(test_bog))
 ###5.4.2. Subir bases para modelos ----
 
 #Se suben ultimas versiones de las bases
-train_bog <-readRDS("./stores/20220725_train_bog") 
-test_bog <-readRDS("./stores/20220725_test")
+train_bog <-readRDS("./stores/20220726_train_bog.rds") 
+test_bog <-readRDS("./stores/20220726_test_bog.rds")
 
 colSums(is.na(train_bog))
 colSums(is.na(test_bog))
+colnames(test_bog)
 
-train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
+#train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
 
-
+#seleccionar variables para correr modelos
+train_bog_modelos <- dplyr::select(train_bog,
+                                   price,
+                                   property_id,
+                                   LocNombre,
+                                   UPlNombre,
+                                   AVALUO_COM,
+                                   ESTRATO,
+                                   area_apto,
+                                   num_banos,
+                                   num_cuartos,
+                                   num_parq,
+                                   dist_tpubl,
+                                   dist_hosp,
+                                   dist_park,
+                                   dist_ccomerc,
+                                   p_upl)
+                                     
 #prueba de remover NAs  
-#train_cha2 <- train_cha[(!is.na(train_cha$MANZANA_ID)), ]
-train_bog_modelos <- na.omit(train_bog)# Base de correr modelos
+train_bog_modelos <- na.omit(train_bog_modelos)# Base de correr modelos
 
 #skim(train_cha2)
 
@@ -1142,23 +1159,48 @@ train_bog_modelos <- na.omit(train_bog)# Base de correr modelos
 # Revisar: Generamos las particiones
 set.seed(100)
 split1_bog <- createDataPartition(train_bog_modelos$price, p = .7)[[1]]
-length(split1) 
+length(split1_bog) 
 
-other <- train_bog_modelos[-split1,]
-Tr_train_bog <- train_bog_modelos[split1,]
+other <- train_bog_modelos[-split1_bog,]
+Tr_train_bog <- train_bog_modelos[split1_bog,]
 
-split2 <- createDataPartition(other$price, p = 1/3)[[1]]
+split2_bog <- createDataPartition(other$price, p = 1/3)[[1]]
 
-Tr_eval_bog <- other[ split2,]
-Tr_test_bog <- other[-split2,]
+Tr_eval_bog <- other[ split2_bog,]
+Tr_test_bog <- other[-split2_bog,]
 
 ##5.5. Formas funcionales propuestas ----
 
-modelo1 <- as.formula (price ~ AVALUO_COM+rooms+dist_tpubl+dist_hosp+dist_ccomerc)
+modelo1 <- as.formula (price ~  AVALUO_COM+
+                                ESTRATO+
+                                area_apto+
+                                num_banos+
+                                num_cuartos+
+                                num_parq+
+                                dist_tpubl+
+                                dist_hosp+
+                                dist_park+
+                                dist_ccomerc+
+                                p_upl)
 
-modelo2 <- as.formula (price ~ p_upl+rooms+bathrooms+dist_tpubl+dist_hosp+dist_ccomerc)
+modelo2 <- as.formula (price ~ AVALUO_COM+
+                               ESTRATO+
+                               area_apto+
+                               num_banos+
+                               num_cuartos+
+                               num_parq+
+                               dist_hosp+
+                               dist_park+
+                               p_upl)
 
-modelo3 <- as.formula (price ~ AVALUO_COM+rooms+bathrooms+surface_covered+dist_tpubl+dist_hosp)
+modelo3 <- as.formula (price ~ AVALUO_COM+
+                               ESTRATO+
+                               area_apto+
+                               num_banos+
+                               num_cuartos+
+                               num_parq+
+                               dist_hosp+
+                               dist_park)
 
 
 # Prueba 0, con OLS
