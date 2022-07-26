@@ -615,7 +615,7 @@ test_bog <- st_join(test_bog,avaluo_bog[,c('MANZANA_ID','GRUPOP_TER','AVALUO_COM
 skim(train_bog)
 skim(test_bog)
 
-##Prueba vecinos para estrato ----
+###Prueba vecinos para estrato ----
 
 #Para train:
 
@@ -626,7 +626,7 @@ library(sfheaders)
 
 #INTERSECCIONES ENTRE LOC y las bases de datos:
 
-#Train. test. ESTRATO
+#Train. ESTRATO
 
 train_bog_loc <- st_join(train_bog,loc_bog)
 test_bog_loc <- st_join(test_bog,loc_bog)
@@ -740,6 +740,129 @@ colSums(is.na(test_bog))
 table(test_bog$ESTRATO)
 
 saveRDS(test_bog,"./stores/20220725_test_bog_estrato.rds")
+
+
+
+###Prueba vecinos para avaluo comercial ----
+
+#Para train:
+
+install.packages("nngeo")
+library(nngeo)
+install.packages("sfheaders")
+library(sfheaders)
+
+#INTERSECCIONES ENTRE LOC y las bases de datos:
+
+#Train. AVALUO COMERCIAL
+
+train_bog_loc  <- st_join(train_bog,loc_bog)
+test_bog_loc   <- st_join(test_bog,loc_bog)
+avaluo_bog_loc <- st_join(avaluo_bog,loc_bog)
+
+colnames(avaluo_bog_loc)
+head(avaluo_bog_loc)
+
+#Dividir entre OK y no OK.
+train_bog_avaluo_ok <- filter(train_bog_loc,!(is.na(train_bog_loc$AVALUO_COM)))
+train_bog_avaluo_na <- filter(train_bog_loc,is.na(train_bog_loc$AVALUO_COM))
+
+test_bog_avaluo_ok <- filter(test_bog_loc,!(is.na(test_bog_loc$AVALUO_COM)))
+test_bog_avaluo_na <- filter(test_bog_loc,is.na(test_bog_loc$AVALUO_COM))
+
+train_bog_avaluo_na$AVALUO_COM <- NULL
+
+table(train_bog_avaluo_na$LocNombre)
+table(avaluo_bog_loc$LocNombre)
+
+#Dividir las bases de datos por localidad:
+
+train_bog_avaluo_na_list <- split(train_bog_avaluo_na, f = train_bog_avaluo_na$LocNombre)
+avaluo_bog_loc_list <- split(avaluo_bog_loc, f = avaluo_bog_loc$LocNombre)
+
+#Correr para vecinos: Ciclo FOR todas las localidades
+
+#Lista de resultados:
+
+train_bog_avaluo_na_result_list <- vector("list",20)
+
+#Inicio del For
+start_for = Sys.time()
+
+
+for (i in 1:length(train_bog_avaluo_na_list)){
+  
+  start_train = Sys.time()
+  
+  train_bog_avaluo_na_result_list[[i]] <- st_join(train_bog_avaluo_na_list[[i]],avaluo_bog_loc_list[[i]][,c('AVALUO_COM')],
+                                                   join = st_nn, k = 1, maxdist = 50, parallel=14)
+  
+  end_train = Sys.time()
+  
+  print(i)
+  
+  print(nrow(train_bog_avaluo_na_result_list[[i]]))
+  
+  print(colSums(is.na(train_bog_avaluo_na_result_list[[i]])))
+  
+  print(end_train - start_train)
+  
+}
+
+end_for = Sys.time()
+
+end_for - start_for
+
+
+train_bog_estrato_na_for <- bind_rows(train_bog_estrato_na_result_list, .id = "id_lista_localid")
+
+train_bog_estrato_na_for$id_lista_localid <- NULL
+
+
+colSums(is.na(train_bog_estrato_na_for))
+
+
+#Se une toda la base
+
+nrow(train_bog)
+train_bog_for <- rbind(train_bog_estrato_ok,train_bog_estrato_na_for)
+
+colSums(is.na(train_bog_for))
+nrow(train_bog_for)
+
+saveRDS(train_bog_for, "stores/20220725_train_bog_estrato.rds")
+
+table(train_bog_for$ESTRATO)
+
+
+#Para Test
+
+colSums(is.na(test_bog))
+
+#Dividir Test entre las que sí encontró estrato y los NA (al final se unen)
+test_bog_estrato_ok <- filter(test_bog,!(is.na(test_bog$ESTRATO)))
+test_bog_estrato_na <- filter(test_bog,is.na(test_bog$ESTRATO))
+
+test_bog_estrato_na$ESTRATO <- NULL
+
+start_train = Sys.time()
+test_bog_estrato_na <- st_join(test_bog_estrato_na,estrato_bog[,c('ESTRATO')],
+                               join = st_nn, k = 1, maxdist = 50, parallel=14)
+end_train = Sys.time()
+end_train - start_train
+
+colSums(is.na(test_bog_estrato_na))
+
+test_bog_estrato_na_df <- sf_to_df(test_bog_estrato_na, fill = TRUE, unlist = NULL)
+
+
+colSums(is.na(test_bog))
+test_bog <- rbind(test_bog_estrato_ok,test_bog_estrato_na)
+colSums(is.na(test_bog))
+table(test_bog$ESTRATO)
+
+saveRDS(test_bog,"./stores/20220725_test_bog_estrato.rds")
+
 
 ###5.1.2 Información de OpenSteetMap ----
 
@@ -888,8 +1011,9 @@ ggplot()+
 
 
 
-##5.4. Bases para pruebas de modelos ----
+##5.4. Preparación bases ----
 
+###5.4.1 Unificar bases ----
 #Se suben las bases completas con imputadas
 train_bog <-readRDS("./stores/Bogota/train_bog_compl.rds") 
 test_bog <-readRDS("./stores/Bogota/test_bog_compl.rds")
@@ -929,7 +1053,6 @@ parques_test <- test_bog_parques %>%
 
 parques_test$geometry <- NULL
 
-
 train_bog <- left_join(train_bog,parques_train,by = c("property_id"))
 test_bog  <- left_join(test_bog,parques_test,by = c("property_id"))
              
@@ -966,8 +1089,17 @@ test_bog  <- left_join(test_bog,estrato_test,by = c("property_id"))
 saveRDS(train_bog, "stores/20220725_train_bog")
 saveRDS(test_bog, "stores/20220725_test")
 
+colSums(is.na(train_bog))
+colSums(is.na(test_bog))
 
-###5.4.1. Base de chapinero ----
+###5.4.2. Subir bases para modelos ----
+
+#Se suben ultimas versiones de las bases
+train_bog <-readRDS("./stores/20220725_train_bog") 
+test_bog <-readRDS("./stores/20220725_test")
+
+colSums(is.na(train_bog))
+colSums(is.na(test_bog))
 
 train_cha <-subset(train_bog,train_bog$LocNombre =="CHAPINERO")
 
