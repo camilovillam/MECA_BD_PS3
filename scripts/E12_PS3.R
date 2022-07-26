@@ -814,23 +814,23 @@ end_for = Sys.time()
 end_for - start_for
 
 
-train_bog_estrato_na_for <- bind_rows(train_bog_estrato_na_result_list, .id = "id_lista_localid")
+train_bog_avaluo_na_for <- bind_rows(train_bog_avaluo_na_result_list, .id = "id_lista_localid")
 
-train_bog_estrato_na_for$id_lista_localid <- NULL
+train_bog_avaluo_na_for$id_lista_localid <- NULL
 
 
-colSums(is.na(train_bog_estrato_na_for))
+colSums(is.na(train_bog_avaluo_na_for))
 
 
 #Se une toda la base
 
 nrow(train_bog)
-train_bog_for <- rbind(train_bog_estrato_ok,train_bog_estrato_na_for)
+train_bog_for <- rbind(train_bog_avaluo_ok,train_bog_avaluo_na_for)
 
 colSums(is.na(train_bog_for))
 nrow(train_bog_for)
 
-saveRDS(train_bog_for, "stores/20220725_train_bog_estrato.rds")
+saveRDS(train_bog_for, "stores/Bogota/20220726_train_bog_avaluo.rds")
 
 table(train_bog_for$ESTRATO)
 
@@ -840,28 +840,27 @@ table(train_bog_for$ESTRATO)
 colSums(is.na(test_bog))
 
 #Dividir Test entre las que sí encontró estrato y los NA (al final se unen)
-test_bog_estrato_ok <- filter(test_bog,!(is.na(test_bog$ESTRATO)))
-test_bog_estrato_na <- filter(test_bog,is.na(test_bog$ESTRATO))
+test_bog_avaluo_ok <- filter(test_bog,!(is.na(test_bog$AVALUO_COM)))
+test_bog_avaluo_na <- filter(test_bog,is.na(test_bog$AVALUO_COM))
 
-test_bog_estrato_na$ESTRATO <- NULL
+test_bog_avaluo_na$AVALUO_COM <- NULL
 
 start_train = Sys.time()
-test_bog_estrato_na <- st_join(test_bog_estrato_na,estrato_bog[,c('ESTRATO')],
+test_bog_avaluo_na <- st_join(test_bog_avaluo_na,avaluo_bog[,c('AVALUO_COM')],
                                join = st_nn, k = 1, maxdist = 50, parallel=14)
 end_train = Sys.time()
 end_train - start_train
 
-colSums(is.na(test_bog_estrato_na))
+colSums(is.na(test_bog_avaluo_na))
 
-test_bog_estrato_na_df <- sf_to_df(test_bog_estrato_na, fill = TRUE, unlist = NULL)
+test_bog_avaluo_na_df <- sf_to_df(test_bog_avaluo_na, fill = TRUE, unlist = NULL)
 
 
 colSums(is.na(test_bog))
-test_bog <- rbind(test_bog_estrato_ok,test_bog_estrato_na)
+test_bog <- rbind(test_bog_avaluo_ok,test_bog_avaluo_na)
 colSums(is.na(test_bog))
-table(test_bog$ESTRATO)
 
-saveRDS(test_bog,"./stores/20220725_test_bog_estrato.rds")
+saveRDS(test_bog,"./stores/20220726_test_bog_avaluo.rds")
 
 
 ###5.1.2 Información de OpenSteetMap ----
