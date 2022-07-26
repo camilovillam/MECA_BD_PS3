@@ -658,7 +658,7 @@ table(train_bog$LocNombre)
 
 #Lista de resultados:
 
-train_bog_mz_estrato_result_list <- vector("list",19)
+train_bog_estrato_na_result_list <- vector("list",19)
 
 #Inicio del For
 start_for = Sys.time()
