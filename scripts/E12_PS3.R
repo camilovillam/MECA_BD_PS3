@@ -1452,25 +1452,19 @@ si_compra_price_m3
 
 ###5.6.2. Definición del control (a usarse en los demás modelos) ----
 
-fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
+### Matriz de desempeño de los modelos:----
+resumen_modelos <- data.frame(matrix(rep(0,250),nrow=25,ncol=10))
+colnames(resumen_modelos) <- c("Ciudad","N_obs", "Modelo","Precio_lista","Dinero_gastado",
+                               "Dif_PLista_Gastado","Prop_compradas","%_compradas",
+                               "Precio_prom_compr","MSE_test")
+sapply(resumen_modelos, typeof)
 
-control <- trainControl(method = "cv", number = 5,
-                        classProbs = TRUE,
-                        verbose=FALSE,
-                        savePredictions = T)
-
-#Función para calcular la decisión de compra --- organizar donde subirlo
 #Entrada: decis_compra(x=valores_predichos,y=error)
 
-# decision_compra <- function(x,y) case_when(y > 0 ~ x,
-#                                            abs(y) < 40000000 ~ x,
-#                                            abs(y) > 40000000 ~ 0)
+decision_compra <- function(x,y) case_when(y > 0 ~ x,
+                                           abs(y) < 40000000 ~ x,
+                                           abs(y) > 40000000 ~ 0)
 
-### Matriz de desempeño de los modelos:----
-
-resumen_modelos <- data.frame(matrix(rep(0,75),nrow=15,ncol=5))
-colnames(resumen_modelos) <- c("Modelo","Dinero_gastado","Prop_compradas","Precio_prom_compr","MSE_test")
-sapply(resumen_modelos, typeof)
 
 ###5.6.3. XGBoost 1 ----
 
@@ -1496,7 +1490,7 @@ grid_default <- expand.grid(nrounds = c(250,500),
 
 start_xg <- Sys.time()
 
-xgboost <- train(
+xgboost_bog1 <- train(
   form_xgboost,
   data = Tr_train_bog, #base bogota
   method = "xgbTree",
@@ -1505,77 +1499,38 @@ xgboost <- train(
   tuneGrid = grid_default,
   preProcess = c("center", "scale")
 )
-xgboost
-
-#Cálculo del índice desempeño del modelo:
-pred_xgb <- predict(xgboost,Tr_test_bog)
-pred_xgb_df <- data.frame(pred_xgb)
-
-#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test_bog) - nrow(pred_xgb_df) #Dif. entre la base y el num de predicciones
-colSums(is.na(Tr_test_bog)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
-
-#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_xgb_df <- cbind (Tr_test_bog[,c("property_id","price")], pred_xgb_df)
-                            #!(is.na(Tr_test_med$COD_CAT_US))), #Filtra obs de la var con NAs
-                    
-pred_xgb_df$geometry <- NULL #Elimino geometría
-#pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
-
-# pred_xgb_df$error_xgb1 <- pred_xgb_df$pred_xgb -pred_xgb_df$price
-# pred_xgb_df$compra_xgb1 <- decision_compra(pred_xgb_df$pred_xgb,pred_xgb_df$error_xgb1)
-# 
-# resumen_modelos[1,1] <- "XGBoost_Bog 1"
-# resumen_modelos[1,2] <- sum(predicciones$compra_xgb1)
-# resumen_modelos[1,3] <- sum(predicciones$compra_xgb1>0)
-# resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
-# resumen_modelos[1,5] <- sum(predicciones$error_xgb1^2)
+xgboost_bog1
+export(xgboost_bog1,"stores/trained_models/xgboost_bog1.rds")
 
 
-#Determinar si es compra o no el inmueble
-
-pred_xgb_df$compra_xgb1 <- factor(if_else(pred_xgb_df$pred_xgb > pred_xgb_df$price | pred_xgb_df$price-pred_xgb_df$pred_xgb<40000000, "Compra", "No_compra"))
-
-summary(pred_xgb_df$compra_xgb1)
-
-#Determinar si el inmueble está subvalorado
-
-pred_xgb_df$subvalorado_xgb1 <- factor(if_else( pred_xgb_df$price-pred_xgb_df$pred_xgb>40000000 , "sub", "No_sub"))
-
-summary(pred_xgb_df$subvalorado_xgb1)
-
-#Calcular el total de dinero gastado con el modelo versus el dinero gastado si las compras se efectuan con precio de mercado 
-
-#para el modelo 1
-compra_pred_xgb <- pred_xgb_df %>% 
-  group_by(compra_xgb1) %>% 
-  summarise(dinerocompra_xgb = sum(pred_xgb))
-
-si_compra_pred_xgb_df <- compra_pred_xgb %>%
-  filter(compra_xgb1=="Compra")
-
-si_compra_pred_xgb <- si_compra_pred_xgb_df$dinerocompra_xgb[[1]]
-
-
-compra_price_xgb <- pred_xgb_df %>% 
-  group_by(compra_xgb1) %>% 
-  summarise(dinerocompra_price_xgb_0 = sum(price))
-
-si_compra_pred_xgb_df <- compra_price_xgb %>%
-  filter(compra_xgb1=="Compra")
-
-si_compra_price_xgb <- si_compra_pred_xgb_df$dinerocompra_price_xgb_0[[1]]
-
-
-
-#Resumen
-
-si_compra_pred_xgb
-si_compra_price_xgb
-
+pred_xgb1 <- predict(xgboost_bog1,Tr_test_bog)
+pred_xgb1_df <- data.frame(pred_xgb1)
 
 end_xg <- Sys.time()
 start_xg-end_xg
+
+
+#Cálculo del índice desempeño del modelo:
+
+#Le pego al DF con la predicción el precio real 
+pred_xgb1_df <- cbind (Tr_test_bog[,c("property_id","price")], pred_xgb1_df)
+
+pred_xgb1_df$geometry <- NULL #Elimino geometría
+
+pred_xgb1_df$error_xgb1 <- pred_xgb1_df$pred_xgb1 - pred_xgb1_df$price
+pred_xgb1_df$compra_xgb1 <- decision_compra(pred_xgb1_df$pred_xgb1,pred_xgb1_df$error_xgb1)
+
+resumen_modelos[4,1] <- "XGBoost bog 1"
+resumen_modelos[4,2] <- sum(pred_xgb1_df$compra_xgb1)
+resumen_modelos[4,3] <- sum(pred_xgb1_df$compra_xgb1>0)
+resumen_modelos[4,4] <- resumen_modelos[4,2] / resumen_modelos[4,3]
+resumen_modelos[4,5] <- mean(pred_xgb1_df$error_xgb1^2)
+
+
+end_xg <- Sys.time()
+end_xg - start_xg
+
+rm(pred_xgb1_df)
 
 ###5.6.4. XGBoost 2 ----
 
@@ -1586,11 +1541,7 @@ xgb_bog2 <- as.formula (price ~
                           num_banos+
                           num_cuartos+
                           num_parq+
-                          dist_tpubl+
-                          dist_hosp+
-                          dist_park+
-                          dist_ccomerc+
-                          p_upl)
+                          dist_tpubl)
 
 
 form_xgboost2 <- xgb_bog2
@@ -1605,7 +1556,7 @@ grid_default <- expand.grid(nrounds = c(250,500),
 
 start_xg <- Sys.time()
 
-xgboost2 <- train(
+xgboost_bog2 <- train(
   form_xgboost2,
   data = Tr_train_bog, #base bogota
   method = "xgbTree",
@@ -1614,76 +1565,41 @@ xgboost2 <- train(
   tuneGrid = grid_default,
   preProcess = c("center", "scale")
 )
-xgboost2
 
-#Cálculo del índice desempeño del modelo:
-pred_xgb2 <- predict(xgboost2,Tr_test_bog)
-pred_xgb_df2 <- data.frame(pred_xgb2)
-
-#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test_bog) - nrow(pred_xgb_df2) #Dif. entre la base y el num de predicciones
-colSums(is.na(Tr_test_bog)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
-
-#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_xgb_df2 <- cbind (Tr_test_bog[,c("property_id","price")], pred_xgb_df2)
-#!(is.na(Tr_test_med$COD_CAT_US))), #Filtra obs de la var con NAs
-
-pred_xgb_df2$geometry <- NULL #Elimino geometría
-#pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
-
-#pred_xgb_df$error_xgb2 <- pred_xgb_df2$pred_xgb -pred_xgb_df2$price
-#pred_xgb_df$compra_xgb2 <- decision_compra(pred_xgb_df2$pred_xgb2,pred_xgb_df2$error_xgb2)
-
-#resumen_modelos[1,1] <- "XGBoost_Bog 1"
-#resumen_modelos[1,2] <- sum(predicciones$compra_xgb2)
-#resumen_modelos[1,3] <- sum(predicciones$compra_xgb2>0)
-#resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
-#resumen_modelos[1,5] <- sum(predicciones$error_xgb2^2)
+xgboost_bog2
+export(xgboost_bog2,"stores/trained_models/xgboost_bog2.rds")
 
 
-#Determinar si es compra o no el inmueble
-
-pred_xgb_df2$compra_xgb2 <- factor(if_else(pred_xgb_df2$pred_xgb2 > pred_xgb_df2$price | pred_xgb_df2$price-pred_xgb_df2$pred_xgb2<40000000, "Compra", "No_compra"))
-
-summary(pred_xgb_df2$compra_xgb2)
-
-#Determinar si el inmueble está subvalorado
-
-pred_xgb_df2$subvalorado_xgb2 <- factor(if_else( pred_xgb_df2$price-pred_xgb_df2$pred_xgb2>40000000 , "sub", "No_sub"))
-
-summary(pred_xgb_df2$subvalorado_xgb2)
-
-#Calcular el total de dinero gastado con el modelo versus el dinero gastado si las compras se efectuan con precio de mercado 
-
-#para el modelo 1
-compra_pred_xgb2 <- pred_xgb_df2 %>% 
-  group_by(compra_xgb2) %>% 
-  summarise(dinerocompra_xgb2 = sum(pred_xgb2))
-
-si_compra_pred_xgb_df2 <- compra_pred_xgb2 %>%
-  filter(compra_xgb2=="Compra")
-
-si_compra_pred_xgb2 <- si_compra_pred_xgb_df2$dinerocompra_xgb2[[1]]
-
-
-compra_price_xgb2 <- pred_xgb_df2 %>% 
-  group_by(compra_xgb2) %>% 
-  summarise(dinerocompra_price_xgb_02 = sum(price))
-
-si_compra_pred_xgb_df2 <- compra_price_xgb2 %>%
-  filter(compra_xgb2=="Compra")
-
-si_compra_price_xgb2 <- si_compra_pred_xgb_df2$dinerocompra_price_xgb_02[[1]]
-
-#Resumen
-
-si_compra_pred_xgb2
-si_compra_price_xgb2
-
+pred_xgb2 <- predict(xgboost_bog2,Tr_test_bog)
+pred_xgb2_df <- data.frame(pred_xgb2)
 
 end_xg <- Sys.time()
 start_xg-end_xg
 
+
+#Cálculo del índice desempeño del modelo:
+
+#Le pego al DF con la predicción el precio real 
+pred_xgb2_df <- cbind (Tr_test_bog[,c("property_id","price")], pred_xgb2_df)
+
+pred_xgb2_df$geometry <- NULL #Elimino geometría
+
+pred_xgb2_df$error_xgb2 <- pred_xgb2_df$pred_xgb2 - pred_xgb2_df$price
+pred_xgb2_df$compra_xgb2 <- decision_compra(pred_xgb2_df$pred_xgb2,pred_xgb2_df$error_xgb2)
+
+resumen_modelos[4,1] <- "XGBoost bog 2"
+resumen_modelos[4,2] <- sum(pred_xgb2_df$compra_xgb2)
+resumen_modelos[4,3] <- sum(pred_xgb2_df$compra_xgb2>0)
+resumen_modelos[4,4] <- resumen_modelos[4,2] / resumen_modelos[4,3]
+resumen_modelos[4,5] <- mean(pred_xgb2_df$error_xgb2^2)
+
+
+end_xg <- Sys.time()
+end_xg - start_xg
+
+rm(pred_xgb1_df)
+
+export(resumen_modelos,"./views/Resumen_modelos_bog.xlsx")
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
