@@ -635,6 +635,12 @@ estrato_bog_loc <- st_join(estrato_bog,loc_bog)
 colnames(estrato_bog_loc)
 head(estrato_bog_loc)
 
+train_bog_loc <- train_bog_loc[train_bog_loc$LocNombre.x != "SUMAPAZ",  ] # Atención a la coma y el espacio al final
+table(train_bog_loc$LocNombre.x)
+
+estrato_bog_loc <- estrato_bog_loc[estrato_bog_loc$LocNombre != "SUMAPAZ",  ] # Atención a la coma y el espacio al final
+table(estrato_bog_loc$LocNombre)
+
 #Dividir entre OK y no OK.
 train_bog_estrato_ok <- filter(train_bog_loc,!(is.na(train_bog_loc$ESTRATO)))
 train_bog_estrato_na <- filter(train_bog_loc,is.na(train_bog_loc$ESTRATO))
@@ -651,8 +657,6 @@ table(estrato_bog_loc$LocNombre)
 
 train_bog_estrato_na_list <- split(train_bog_estrato_na, f = train_bog_estrato_na$LocNombre.x)
 estrato_bog_loc_list <- split(estrato_bog_loc, f = estrato_bog_loc$LocNombre)
-
-table(train_bog$LocNombre)
 
 #Correr para vecinos: Ciclo FOR todas las localidades
 
