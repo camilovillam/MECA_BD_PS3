@@ -710,6 +710,9 @@ nrow(train_bog_for)
 
 saveRDS(train_bog_for, "stores/20220725_train_bog_estrato.rds")
 
+table(train_bog_for$ESTRATO)
+
+
 #Para Test
 
 colSums(is.na(test_bog))
@@ -734,9 +737,9 @@ test_bog_estrato_na_df <- sf_to_df(test_bog_estrato_na, fill = TRUE, unlist = NU
 colSums(is.na(test_bog))
 test_bog <- rbind(test_bog_estrato_ok,test_bog_estrato_na)
 colSums(is.na(test_bog))
+table(test_bog$ESTRATO)
 
-
-saveRDS(train_bog_mz_na_df,"./stores/Bogota/rds_calculados/MZ_train_NA.rds")
+saveRDS(test_bog,"./stores/20220725_test_bog_estrato.rds")
 
 ###5.1.2 Información de OpenSteetMap ----
 
