@@ -1029,6 +1029,10 @@ test_bog_manz <-readRDS("./stores/Bogota/test_bog_manz.rds")
 train_bog_estrato <-readRDS("./stores/Bogota/20220725_train_bog_estrato.rds") 
 test_bog_estrato <-readRDS("./stores/Bogota/20220725_test_bog_estrato.rds")
 
+#Se sube avaluo OK
+train_bog_avaluo <-readRDS("./stores/Bogota/20220726_train_bog_avaluo.rds") 
+test_bog_avaluo <-readRDS("./stores/Bogota/20220726_test_bog_avaluo.rds")
+
 #Se borran de la bases completas las columnas que luego se pegan por id de las demas bases
 
 train_bog$MANCODIGO <- NULL
@@ -1036,6 +1040,9 @@ test_bog$MANCODIGO <- NULL
 
 train_bog$ESTRATO <- NULL
 test_bog$ESTRATO <- NULL
+
+train_bog$AVALUO_COM <- NULL
+test_bog$AVALUO_COM <- NULL
 
 #Se seleccionan la variables de interes de las bases
 
@@ -1083,10 +1090,24 @@ estrato_test$geometry <- NULL
 train_bog <- left_join(train_bog,estrato_train,by = c("property_id"))
 test_bog  <- left_join(test_bog,estrato_test,by = c("property_id"))
 
+#avaluo bog 
+avaluo_train <- train_bog_avaluo %>%
+  dplyr::select(property_id,
+                AVALUO_COM)
+avaluo_train$geometry <- NULL
+
+avaluo_test <- test_bog_avaluo %>%
+  dplyr::select(property_id,
+                AVALUO_COM)
+avaluo_test$geometry <- NULL
+
+train_bog <- left_join(train_bog,avaluo_train,by = c("property_id"))
+test_bog  <- left_join(test_bog,avaluo_test,by = c("property_id"))
+
 #se guardan las bases
 
-saveRDS(train_bog, "stores/20220725_train_bog")
-saveRDS(test_bog, "stores/20220725_test")
+saveRDS(train_bog, "stores/20220726_train_bog.rds")
+saveRDS(test_bog, "stores/20220726_test_bog.rds")
 
 colSums(is.na(train_bog))
 colSums(is.na(test_bog))
