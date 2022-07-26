@@ -3130,29 +3130,90 @@ xgboost2 <- train(
   preProcess = c("center", "scale")
 )
 xgboost2
-export(xgboost2,"./stores/trained_models/xgboost.rds")
+export(xgboost2,"./stores/trained_models/xgboost2.rds")
 
 
 
+### Random Forest: ----
+
+form_randomforest <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          num_parq +
+                          ESTRATO +
+                          area_apto + 
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
+
+
+Tr_train_forest <- Tr_train
+Tr_train_forest$geometry <- NULL
+
+Tr_train_forest <- Tr_train_forest[complete.cases(Tr_train_forest), ] #No admite NAs
+nrow(Tr_train_forest)
+
+set.seed(100)
+
+control_rf <- trainControl(method='cv', 
+                        number=5,
+                        verbose=FALSE,
+                        savePredictions = T)
+
+mtry <- sqrt(10) #Número de predictores
+
+tunegrid_rf <- expand.grid(.mtry=mtry)
+
+forest <- train(form_randomforest, 
+                data=Tr_train_forest, 
+                method='rf',
+                trControl = control_rf,
+                na.action  = na.pass,
+                tuneGrid=tunegrid_rf)
+forest
+export(forest,"./stores/trained_models/forest.rds")
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#10: ESTIMACIÓN MEJOR MODELO ----
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+#Elimino NAs en Tr_test para tener siempre el mismo número de observaciones
+
+Tr_test_con_NA <- Tr_test #Lo guardo completo, por si algo
+
+Tr_test$geometry <- NULL
+Tr_test <- Tr_test[complete.cases(Tr_test), ] #No admite NAs
+nrow(Tr_test)
+
+
+#Se cargan los modelos:
+
+modelos_pred <- vector("list",20)
+modelos_pred[[1]] <- readRDS("./stores/modelos_train/model.rds")
+
+
+#Listas:
+modelos_pred[[1]]#Train models
+pred_modelo[[1]] #Predicciones sobre Tr_test
+pred_modelo_df[[1]]#Igual pero en DF
+errores_mod[[1]] # Errores de los modelos
 
 #Cálculo del índice desempeño del modelo:
-pred_xgboost <- predict(xgboost,Tr_test)
-pred_xgboost_df <- data.frame(pred_xgboost)
+pred_modelo[[1]] <- predict(modelos_pred[[1]],Tr_test)
+pred_modelo_df[[1]] <- data.frame(pred_modelo[[1]] )
 
+#Le pego al DF con la predicción el precio real
+pred_modelo_df[[1]] <- cbind(Tr_test[,c("property_id","price")],
+                             pred_modelo_df[[1]])
 
-#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test) - nrow(pred_tree_df) #Dif. entre la base y el num de predicciones
-colSums(is.na(Tr_test)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
+pred_modelo_df[[1]]$geometry <- NULL #Elimino geometría
+nrow(pred_modelo_df[[1]])
 
-#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_tree_df <- cbind(filter(Tr_test[,c("property_id","price")],
-                             !(is.na(Tr_test$ESTRATO)|is.na(Tr_test$AVALUO_COM))), #Filtra obs de la var con NAs
-                      pred_tree_df)
-
-nrow(pred_tree_df)
-pred_tree_df$geometry <- NULL #Elimino geometría
-
-pred_tree_df$error_tree1 <- pred_tree_df$pred_tree -pred_tree_df$price
+errores_mod[[1]] <- pred_modelo_df[[1]]$pred_tree -pred_tree_df$price
 pred_tree_df$compra_tree1 <- decision_compra(pred_tree_df$pred_tree,pred_tree_df$error_tree1)
 
 resumen_modelos[2,1] <- "Bog+Med"
@@ -3166,95 +3227,13 @@ resumen_modelos[2,8] <- (sum(pred_tree_df$compra_tree1>0)/nrow(pred_tree_df))*10
 resumen_modelos[2,9] <- sum(pred_tree_df$compra_tree1>0) / sum(pred_tree_df$compra_tree1)
 resumen_modelos[2,10] <- mean(pred_tree_df$error_tree1^2)
 
-rm(pred_tree_df)
 
 
 
-### Random Forest: ----
-
-form_randomforest <- as.formula("price ~ 
-                          num_banos + 
-                          bedrooms + 
-                          num_cuartos + 
-                          num_parq +
-                          ESTRATO +
-                          area_apto + 
-                          AVALUO_COM +
-                          dist_tpubl + 
-                          dist_hosp + 
-                          dist_ccomerc + 
-                          dist_park")
-
-
-colnames(Tr_train)
-colSums(is.na(Tr_train))
-
-Tr_train_forest <- Tr_train
-Tr_train_forest$geometry <- NULL
-
-Tr_train_forest <- filter(Tr_train_forest[,c("price", 
-                          "num_banos", 
-                          "bedrooms"  ,
-                          "num_cuartos",  
-                          "num_parq" ,
-                          "ESTRATO" ,
-                          "area_apto"  ,
-                          "AVALUO_COM", 
-                          "dist_tpubl" ,
-                          "dist_hosp",
-                          "dist_ccomerc", 
-                          "dist_park")])
-
-
-Tr_train_forest <- Tr_train_forest[complete.cases(Tr_train_forest), ]
-
-nrow(Tr_train_forest)
-# 
-# control <- trainControl(method = "cv", number = 5,
-#                         #summaryFunction = fiveStats, 
-#                         classProbs = TRUE,
-#                         verbose=FALSE,
-#                         savePredictions = T)
-
-set.seed(100)
-
-control_rf <- trainControl(method='cv', 
-                        number=5,
-                        verbose=FALSE,
-                        savePredictions = T)
-
-mtry <- sqrt(11)
-
-tunegrid_rf <- expand.grid(.mtry=mtry)
-
-forest <- train(form_randomforest, 
-                data=Tr_train, 
-                method='rf',
-                trControl = control_rf,
-                na.action  = na.pass,
-                tuneGrid=tunegrid_rf)
-
-# print(forest)
-# 
-# forest <- train(
-#   form_randomforest,
-#   data = Tr_train,
-#   method = "rf",
-#   trControl = control,
-#   na.action  = na.pass,
-#   family = "binomial"
-#   #metric="Sens",
-#   #preProcess = c("center", "scale")
-# )
-
-forest
-
-
-?train
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#10: ESTIMACIÓN MEJOR MODELO Y EXPORTACIÓN FINAL ----
+#11: EXPORTACIÓN FINAL ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
