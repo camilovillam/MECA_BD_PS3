@@ -455,6 +455,78 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=metromed_station)
 # 5. MODELO BOGOTÁ D.C. ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+##5.0.0. Tablas descritivas base unificada (luego de merge crear un capítulo) ----
+
+setwd("~/GitHub/MECA_BD_PS3")
+
+#subir la base definitiva
+
+train_vf_tablas<-readRDS("./stores/train_compl.rds") 
+test_vf_tablas <-readRDS("./stores/test_compl.rds") 
+
+#se instala y se carga el paquete de tablas
+install.packages("gtsummary")
+require ("gtsummary") 
+require("haven")
+
+colnames(train_vf_tablas)
+train_vf_tablas$geometry <- NULL
+test_vf_tablas$geometry <- NULL
+
+#Tabla de estrato por ciudad en train
+train_vf_tablas %>%
+  dplyr::select(ESTRATO,l3) %>%
+  tbl_summary(by=l3) %>%
+  add_overall() %>%
+  add_n()
+
+#Tabla de estrato por ciudad en test
+test_vf_tablas %>%
+  dplyr::select(ESTRATO,l3) %>%
+  tbl_summary(by=l3) %>%
+  add_overall() %>%
+  add_n()
+
+#Tabla de tipo de propiedad por ciudad en train
+train_vf_tablas  %>%
+  dplyr::select(property_type,l3) %>%
+  tbl_summary(by=l3) %>%
+  add_overall() %>%
+  add_n()
+
+#Tabla de tipo de propiedad por ciudad en test
+test_vf_tablas  %>%
+  dplyr::select(property_type,l3) %>%
+  tbl_summary(by=l3) %>%
+  add_overall() %>%
+  add_n()
+
+#Tabla de pomedio área por ciudad en test
+
+fn_add_mean <- function(data, variable, ...) {
+  data %>%
+    dplyr::group_by(.data[[variable]]) %>%
+    dplyr::arrange(.data[[variable]]) %>%
+    dplyr::summarise(train_vf_tablas = mean(train_vf_tablas, na.rm = TRUE)) %>%
+    select(train_vf_tablas) %>%
+    mutate(train_vf_tablas = style_sigfig(train_vf_tablas))
+}
+
+tbl <-
+  area  %>%
+  select(l3, area_apto) %>%
+  tbl_summary(
+    include  = -train_vf_tablas,
+    type = everything() ~ "categorical"
+  ) %>%
+  add_stat(
+    all_categorical() ~ fn_add_mean,
+    location = all_categorical() ~  "level"
+  ) %>%
+  modify_header(train_vf_tablas ~ "**Medis área**")
+
+
+
 ##5.0. subir base y prepararla ----
 
 setwd("~/GitHub/MECA_BD_PS3")
