@@ -890,18 +890,88 @@ ggplot()+
 
 ##5.4. Bases Train para pruebas de modelos ----
 
-train_bog <-readRDS("./stores/20220724_train_bog.rds") 
-test_bog <-readRDS("./stores/20220724_test_bog.rds")
+#Se suben las bases completas con imputadas
+train_bog <-readRDS("./stores/Bogota/train_bog_compl.rds") 
+test_bog <-readRDS("./stores/Bogota/test_bog_compl.rds")
 
+#Se sube parques OK
 train_bog_parques <-readRDS("./stores/Bogota/train_bog_parques.rds") 
 test_bog_parques <-readRDS("./stores/Bogota/test_bog_parques.rds")
 
+#Se sube manzanas OK
+train_bog_manz <-readRDS("./stores/Bogota/train_bog_manz.rds") 
+test_bog_manz <-readRDS("./stores/Bogota/test_bog_manz.rds")
 
-train_bog$dist_park <- train_bog_parques$dist_park
-test_bog$dist_park <- test_bog_parques$dist_park
+#Se sube estrato OK
+train_bog_estrato <-readRDS("./stores/Bogota/20220725_train_bog_estrato.rds") 
+test_bog_estrato <-readRDS("./stores/Bogota/20220725t_test_bog_estrato.rds")
 
-saveRDS(train_bog, "stores/20220724_train_bog_p.rds")
-saveRDS(test_bog, "stores/20220724_test_bog_p.rds")
+#Se borran de la bases completas las columnas que luego se pegan por id de las demas bases
+
+train_bog$MANCODIGO <- NULL
+test_bog$MANCODIGO <- NULL
+
+train_bog$ESTRATO <- NULL
+test_bog$ESTRATO <- NULL
+
+#Se seleccionan la variables de interes de las bases
+
+
+#distancia parques 
+parques_train <- train_bog_parques %>%
+  dplyr::select(property_id,
+                dist_park)
+
+parques_test <- test_bog_parques %>%
+  dplyr::select(property_id,
+                dist_park)
+
+train_bog <- 
+  inner_join(train_bog,parques_train,
+             by = c("property_id"))
+
+test_bog <- 
+  inner_join(test_bog,parques_test,
+             by = c("property_id"))
+
+#manzanas bog 
+manzanas_train <- train_bog_manz %>%
+  dplyr::select(property_id,
+                MANCODIGO)
+
+manzanas_test <- test_bog_manz %>%
+  dplyr::select(property_id,
+                MANCODIGO)
+
+train_bog <- 
+  inner_join(train_bog,manzanas_train,
+             by = c("property_id"))
+
+test_bog <- 
+  inner_join(test_bog,manzanas_test,
+             by = c("property_id"))
+
+#estrato bog 
+estrato_train <- train_bog_estrato %>%
+  dplyr::select(property_id,
+                ESTRATO)
+
+estrato_test <- test_bog_estrato %>%
+  dplyr::select(property_id,
+                ESTRATO)
+
+train_bog <- 
+  inner_join(train_bog,estrato_train,
+             by = c("property_id"))
+
+test_bog <- 
+  inner_join(test_bog,estrato_test,
+             by = c("property_id"))
+
+#se guardan las bases
+
+saveRDS(train_bog, "stores/20220725_train_bog")
+saveRDS(test_bog, "stores/20220725_test")
 
 
 ###5.4.1. Base de chapinero ----
