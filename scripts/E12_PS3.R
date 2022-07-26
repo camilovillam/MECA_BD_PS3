@@ -888,7 +888,7 @@ ggplot()+
 
 
 
-##5.4. Bases Train para pruebas de modelos ----
+##5.4. Bases para pruebas de modelos ----
 
 #Se suben las bases completas con imputadas
 train_bog <-readRDS("./stores/Bogota/train_bog_compl.rds") 
@@ -904,7 +904,7 @@ test_bog_manz <-readRDS("./stores/Bogota/test_bog_manz.rds")
 
 #Se sube estrato OK
 train_bog_estrato <-readRDS("./stores/Bogota/20220725_train_bog_estrato.rds") 
-test_bog_estrato <-readRDS("./stores/Bogota/20220725t_test_bog_estrato.rds")
+test_bog_estrato <-readRDS("./stores/Bogota/20220725_test_bog_estrato.rds")
 
 #Se borran de la bases completas las columnas que luego se pegan por id de las demas bases
 
@@ -921,52 +921,45 @@ test_bog$ESTRATO <- NULL
 parques_train <- train_bog_parques %>%
   dplyr::select(property_id,
                 dist_park)
+parques_train$geometry <- NULL
 
 parques_test <- test_bog_parques %>%
   dplyr::select(property_id,
                 dist_park)
 
-train_bog <- 
-  inner_join(train_bog,parques_train,
-             by = c("property_id"))
+parques_test$geometry <- NULL
 
-test_bog <- 
-  inner_join(test_bog,parques_test,
-             by = c("property_id"))
 
+train_bog <- left_join(train_bog,parques_train,by = c("property_id"))
+test_bog  <- left_join(test_bog,parques_test,by = c("property_id"))
+             
 #manzanas bog 
 manzanas_train <- train_bog_manz %>%
   dplyr::select(property_id,
                 MANCODIGO)
+manzanas_train$geometry <- NULL
 
 manzanas_test <- test_bog_manz %>%
   dplyr::select(property_id,
                 MANCODIGO)
+manzanas_test$geometry <- NULL
 
-train_bog <- 
-  inner_join(train_bog,manzanas_train,
-             by = c("property_id"))
-
-test_bog <- 
-  inner_join(test_bog,manzanas_test,
-             by = c("property_id"))
+train_bog <- left_join(train_bog,manzanas_train,by = c("property_id"))
+test_bog  <- left_join(test_bog,manzanas_test,by = c("property_id"))
 
 #estrato bog 
 estrato_train <- train_bog_estrato %>%
   dplyr::select(property_id,
                 ESTRATO)
+estrato_train$geometry <- NULL
 
 estrato_test <- test_bog_estrato %>%
   dplyr::select(property_id,
                 ESTRATO)
+estrato_test$geometry <- NULL
 
-train_bog <- 
-  inner_join(train_bog,estrato_train,
-             by = c("property_id"))
-
-test_bog <- 
-  inner_join(test_bog,estrato_test,
-             by = c("property_id"))
+train_bog <- left_join(train_bog,estrato_train,by = c("property_id"))
+test_bog  <- left_join(test_bog,estrato_test,by = c("property_id"))
 
 #se guardan las bases
 
