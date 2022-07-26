@@ -2680,7 +2680,7 @@ stargazer(reg1,reg2,reg3,type="text")
 
 control <- trainControl(method = "cv", number = 5,
                         #summaryFunction = fiveStats, 
-                        classProbs = TRUE,
+                        #classProbs = TRUE,
                         verbose=FALSE,
                         savePredictions = T)
 
@@ -2993,7 +2993,7 @@ rm(list=c("other","split1","split2"))
 
 control <- trainControl(method = "cv", number = 5,
                         #summaryFunction = fiveStats, 
-                        classProbs = TRUE,
+                        #classProbs = TRUE,
                         verbose=FALSE,
                         savePredictions = T)
 
@@ -3166,12 +3166,18 @@ mtry <- sqrt(10) #Número de predictores
 
 tunegrid_rf <- expand.grid(.mtry=mtry)
 
+start <- Sys.time()
+
 forest <- train(form_randomforest, 
                 data=Tr_train_forest, 
                 method='rf',
                 trControl = control_rf,
                 na.action  = na.pass,
                 tuneGrid=tunegrid_rf)
+
+end <- Sys.time()
+end - start
+
 forest
 export(forest,"./stores/trained_models/forest.rds")
 
