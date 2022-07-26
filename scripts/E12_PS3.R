@@ -696,9 +696,9 @@ train_bog_estrato_na_for <- bind_rows(train_bog_estrato_na_result_list, .id = "i
 
 train_bog_estrato_na_for$id_lista_localid <- NULL
 
-nrow(train_bog_estrato_na_for)
+
 colSums(is.na(train_bog_estrato_na_for))
-(562/nrow(train_bog_estrato_na_for))*100#numero de na
+
 
 #Se une toda la base
 
