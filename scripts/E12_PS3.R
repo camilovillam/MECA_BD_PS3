@@ -3105,39 +3105,18 @@ colSums(is.na(test))
 modelofinal <- tree
 
 #Se predice el modelo en Test completo:
-pred_final <- predict(modelofinal,test)
-pred_final_df <- data.frame(pred_final)
+test$pred_final <- predict(modelofinal,test)
+test$geometry <- NULL
 
-nrow(test) - nrow(pred_final_df)
-nrow(test)
-nrow(pred_final_df)
-
-
-submit <- data.frame(test$property_id)
-submit <- cbind(submit,pred_final_df)
+submit <- data.frame(test[,c("property_id","pred_final")])
 colnames(submit) <- c("property_id","price")
-nrow(submit)
+class(submit$price) = "Numeric"
+
+nrow(submit) - nrow(test)
 view(submit)
 
 export(submit,"./document/predictions_garcia_molano_villa.csv")
 
-
-# #Validación con TRAIN (por estar seguro)
-# 
-# #Se predice el modelo en Test completo:
-# pred_final_tr <- predict(modelofinal,train)
-# pred_final_tr_df <- data.frame(pred_final_tr)
-# 
-# nrow(train) - nrow(pred_final_tr_df)
-# nrow(train)
-# nrow(pred_final_tr_df)
-# 
-# 
-# submit_tr <- data.frame(train$property_id)
-# sumbit_tr$price <- train$price
-# submit_tr <- cbind(submit_tr,pred_final_tr_df)
-# nrow(submit)
-# 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
