@@ -1390,9 +1390,9 @@ control <- trainControl(method = "cv", number = 5,
 #Función para calcular la decisión de compra --- organizar donde subirlo
 #Entrada: decis_compra(x=valores_predichos,y=error)
 
-decision_compra <- function(x,y) case_when(y > 0 ~ x,
-                                           abs(y) < 40000000 ~ x,
-                                           abs(y) > 40000000 ~ 0)
+# decision_compra <- function(x,y) case_when(y > 0 ~ x,
+#                                            abs(y) < 40000000 ~ x,
+#                                            abs(y) > 40000000 ~ 0)
 
 ### Matriz de desempeño de los modelos:----
 
@@ -1402,15 +1402,14 @@ sapply(resumen_modelos, typeof)
 
 ###5.6.3. XGBoost 1 ----
 
-xgb_bog1 <- as.formula (price ~ 
-                          AVALUO_COM+
-                          rooms+
-                          bathrooms+
-                          surface_covered+
-                          dist_tpubl+
-                          dist_hosp+
-                          dist_ccomerc+
-                          p_upl)
+xgb_bog1 <- as.formula (price ~ AVALUO_COM+
+                                ESTRATO+
+                                area_apto+
+                                num_banos+
+                                num_cuartos+
+                                num_parq+
+                                dist_hosp+
+                                dist_park)
 
 
 form_xgboost <- xgb_bog1
@@ -1451,14 +1450,14 @@ pred_xgb_df <- cbind (Tr_test_bog[,c("property_id","price")], pred_xgb_df)
 pred_xgb_df$geometry <- NULL #Elimino geometría
 #pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
 
-pred_xgb_df$error_xgb1 <- pred_xgb_df$pred_xgb -pred_xgb_df$price
-pred_xgb_df$compra_xgb1 <- decision_compra(pred_xgb_df$pred_xgb,pred_xgb_df$error_xgb1)
-
-resumen_modelos[1,1] <- "XGBoost_Bog 1"
-resumen_modelos[1,2] <- sum(predicciones$compra_xgb1)
-resumen_modelos[1,3] <- sum(predicciones$compra_xgb1>0)
-resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
-resumen_modelos[1,5] <- sum(predicciones$error_xgb1^2)
+# pred_xgb_df$error_xgb1 <- pred_xgb_df$pred_xgb -pred_xgb_df$price
+# pred_xgb_df$compra_xgb1 <- decision_compra(pred_xgb_df$pred_xgb,pred_xgb_df$error_xgb1)
+# 
+# resumen_modelos[1,1] <- "XGBoost_Bog 1"
+# resumen_modelos[1,2] <- sum(predicciones$compra_xgb1)
+# resumen_modelos[1,3] <- sum(predicciones$compra_xgb1>0)
+# resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
+# resumen_modelos[1,5] <- sum(predicciones$error_xgb1^2)
 
 
 #Determinar si es compra o no el inmueble
@@ -1510,14 +1509,16 @@ start_xg-end_xg
 
 xgb_bog2 <- as.formula (price ~ 
                           AVALUO_COM+
-                          rooms+
-                          bathrooms+
-                          surface_covered+
+                          ESTRATO+
+                          area_apto+
+                          num_banos+
+                          num_cuartos+
+                          num_parq+
                           dist_tpubl+
                           dist_hosp+
+                          dist_park+
                           dist_ccomerc+
-                          p_upl+
-                          dist_park)
+                          p_upl)
 
 
 form_xgboost2 <- xgb_bog2
