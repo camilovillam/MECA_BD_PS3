@@ -2433,6 +2433,9 @@ intersect(colnames(train_bog), colnames(train_med))
 test_med$AVALUO_COM <- test_med$avaluo_m2
 train_med$AVALUO_COM <- train_med$avaluo_m2
 
+test_med$dist_tpubl <- test_med$dist_metro 
+train_med$dist_tpubl <- train_med$dist_metro 
+
 test_med$UPL <- test_med$BARRIO
 train_med$UPL <- train_med$BARRIO
 
@@ -2484,18 +2487,64 @@ export(train,"./stores/train_compl.rds")
 
 
 
-
-
-
-
 ###############################################################
-#### 9. REGRESIONES ----
+#9. REGRESIONES ----
 ###############################################################
 
 
-### PARTIR LAS BASES DE DATOS: TRAIN, EVAL, TEST.
+#Inicializaciones comunes:
 
-### 6.5.1. Partición de la base de datos en tres----
+
+### Matriz de desempeño de los modelos:----
+
+resumen_modelos <- data.frame(matrix(rep(0,250),nrow=25,ncol=10))
+colnames(resumen_modelos) <- c("Ciudad","N_obs", "Modelo","Precio_lista","Dinero_gastado",
+                               "Dif_PLista_Gastado","Prop_compradas","%_compradas",
+                               "Precio_prom_compr","MSE_test")
+sapply(resumen_modelos, typeof)
+
+
+
+#DF con las predicciones. Mejor omitir esto porque el número de filas 
+#puede variar dependiendo del modelo
+
+# predicciones <- Tr_test[,c("property_id","price","val_tot_area_OIME","COD_CAT_US",)]
+# predicciones <- filter(predicciones,!(is.na(predicciones$COD_CAT_US)))
+# predicciones$COD_CAT_US <- NULL
+# predicciones <- cbind(predicciones,pred_tree_df,pred_xgb_df)
+
+
+
+#Función para calcular la decisión de compra.
+#Entrada: decis_compra(x=valores_predichos,y=error)
+
+decision_compra <- function(x,y) case_when(y > 0 ~ x,
+                                           abs(y) < 40000000 ~ x,
+                                           abs(y) > 40000000 ~ 0)
+
+
+
+###Preparación del PC, cálculos en paralelo ----
+
+n_cores <- detectCores()
+print(paste("Mi PC tiene", n_cores, "nucleos"))
+
+# Vamos a usar n_cores - 2 procesadores para esto
+cl <- makePSOCKcluster(n_cores-2) 
+registerDoParallel(cl)
+
+##Ejecutar...
+
+# Liberamos nuestros procesadores
+stopCluster(cl)
+
+
+
+
+
+##9.1. REGRESIONES MEDELLÍN ----
+
+### 6.5.1. Partición de la base de datos Medellín en tres----
 
 #La base de datos Train se divide en tres particiones:
 # Tr_train: Entrenar el modelo
@@ -2523,48 +2572,6 @@ nrow(Tr_test_med)
 nrow(Tr_train_med)+nrow(Tr_eval_med)+nrow(Tr_test_med)==nrow(train_med)
 
 rm(list=c("other","split1","split2"))
-
-
-### Matriz de desempeño de los modelos:----
-
-resumen_modelos <- data.frame(matrix(rep(0,75),nrow=15,ncol=5))
-colnames(resumen_modelos) <- c("Modelo","Dinero_gastado","Prop_compradas","Precio_prom_compr","MSE_test")
-sapply(resumen_modelos, typeof)
-
-
-
-#DF con las predicciones. Mejor omitir esto porque el número de filas 
-#puede variar dependiendo del modelo
-
-# predicciones <- Tr_test[,c("property_id","price","val_tot_area_OIME","COD_CAT_US",)]
-# predicciones <- filter(predicciones,!(is.na(predicciones$COD_CAT_US)))
-# predicciones$COD_CAT_US <- NULL
-# predicciones <- cbind(predicciones,pred_tree_df,pred_xgb_df)
-
-
-
-#Función para calcular la decisión de compra.
-#Entrada: decis_compra(x=valores_predichos,y=error)
-
-decision_compra <- function(x,y) case_when(y > 0 ~ x,
-                                        abs(y) < 40000000 ~ x,
-                                        abs(y) > 40000000 ~ 0)
-
-
-
-###Preparación del PC, cálculos en paralelo ----
-
-n_cores <- detectCores()
-print(paste("Mi PC tiene", n_cores, "nucleos"))
-
-# Vamos a usar n_cores - 2 procesadores para esto
-cl <- makePSOCKcluster(n_cores-2) 
-registerDoParallel(cl)
-
-##Ejecutar...
-
-# Liberamos nuestros procesadores
-stopCluster(cl)
 
 
 
@@ -2682,9 +2689,9 @@ control <- trainControl(method = "cv", number = 5,
 # train_med_fact$COD_CAT_US <- factor(train_med_fact$COD_CAT_US)
 # train_med_fact$COD_SUBCAT <- factor(train_med_fact$COD_SUBCAT)
 
-colnames(train_med_fact)
+# colnames(train_med_fact)
 
-form_tree <- as.formula("price ~ 
+form_treem <- as.formula("price ~ 
                           num_banos + 
                           bedrooms + 
                           num_cuartos + 
@@ -2701,8 +2708,8 @@ form_tree <- as.formula("price ~
 
 #Ensayo de tree con un control de internet:
 
-tree <- train(
-  form_tree,
+treem <- train(
+  form_treem,
   data = Tr_train_med, #Debería ser la de las variables con Factores?
   method = "rpart",
   trControl = control,
@@ -2713,37 +2720,41 @@ tree <- train(
   #preProcess = c("center", "scale")
 )
 
-tree
-rpart.plot::prp(tree$finalModel)
+treem
+rpart.plot::prp(treem$finalModel)
 
 nrow(Tr_test_med)
 
 #Cálculo del índice desempeño del modelo:
-pred_tree <- predict(tree,Tr_test_med)
-pred_tree_df <- data.frame(pred_tree)
+pred_treem <- predict(treem,Tr_test_med)
+pred_treem_df <- data.frame(pred_treem)
 
 
 #Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test_med) - nrow(pred_tree_df) #Dif. entre la base y el num de predicciones
+nrow(Tr_test_med) - nrow(pred_treem_df) #Dif. entre la base y el num de predicciones
 colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
 
 #Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_tree_df <- cbind(filter(Tr_test_med[,c("property_id","price")],
+pred_treem_df <- cbind(filter(Tr_test_med[,c("property_id","price")],
                             !(is.na(Tr_test_med$ESTRATO))), #Filtra obs de la var con NAs
-                      pred_tree_df)
-pred_tree_df$geometry <- NULL #Elimino geometría
-pred_tree_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
+                      pred_treem_df)
+pred_treem_df$geometry <- NULL #Elimino geometría
+pred_treem_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
 
-pred_tree_df$error_tree1 <- pred_tree_df$pred_tree -pred_tree_df$price
-pred_tree_df$compra_tree1 <- decision_compra(pred_tree_df$pred_tree,pred_tree_df$error_tree1)
+pred_treem_df$error_treem1 <- pred_treem_df$pred_treem -pred_treem_df$price
+pred_treem_df$compra_treem1 <- decision_compra(pred_treem_df$pred_treem,pred_treem_df$error_treem1)
 
-resumen_modelos[1,1] <- "Tree 1"
-resumen_modelos[1,2] <- sum(pred_tree_df$compra_tree1)
-resumen_modelos[1,3] <- sum(pred_tree_df$compra_tree1>0)
-resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
-resumen_modelos[1,5] <- mean(pred_tree_df$error_tree1^2)
+resumen_modelos[1,1] <- "Medellín"
+resumen_modelos[1,2] <- nrow(pred_treem_df)
+resumen_modelos[1,3] <- "Tree 1"
+resumen_modelos[1,4] <- sum(pred_treem_df$price)
+resumen_modelos[1,5] <- sum(pred_treem_df$compra_treem1)
+resumen_modelos[1,6] <- sum(pred_treem_df$price) - sum(pred_treem_df$compra_treem1)
+resumen_modelos[1,7] <- sum(pred_treem_df$compra_treem1>0)
+resumen_modelos[1,8] <- (sum(pred_treem_df$compra_treem1>0)/nrow(pred_treem_df))*100
+resumen_modelos[1,9] <- sum(pred_treem_df$compra_treem1>0) / sum(pred_treem_df$compra_treem1)
+resumen_modelos[1,10] <- mean(pred_treem_df$error_treem1^2)
 
-rm(pred_tree_df)
 
 ###Modelo XGBoost ----
 
@@ -2936,44 +2947,120 @@ export(resumen_modelos,"./views/Resumen_modelos1.xlsx")
 
 
 
-# ###MALO
-# 
-# predicciones <- cbind(predicciones,pred_tree_df2,pred_xgb_df2)
-# predicciones$geometry <- NULL
-# 
-# #export(predicciones,"./views/ensayo_predicc_med.xlsx")
-# 
-# 
-# #Cálculo del índice de los modelos ----
-# 
-# #Por ahora manual, luego se generaliza.
-# #HAY QUE TENER CUIDADO CON EL NÚMERO DE OBSERVACIONES, 
-# #DEPENDIENDO DE LAS VARS USADAS
-# 
-# predicciones_val <- predicciones
-# 
-# predicciones_val$property_id <- NULL
-# predicciones_val$description <- NULL
-# 
-# 
-# #Cálculo de la  matriz de diferencias
-# predicciones_difs <- data.frame(lapply(predicciones[c(colnames(predicciones_val))], 
-#                             function(x) x - predicciones_val$price))
-# 
-# predicciones_difs <- data.frame(lapply(predicciones_val, 
-#                                        function(x) x - predicciones_val$price))
-# 
-# 
-# #Cálculo del valor gastado si se da la compra:
-# 
-# calculo_gasto_compra <- function(x) case_when(x > 0 ~ x,
-#                                               abs(x) < 40000000 ~ x,
-#                                               abs(x) < 40000000 ~ 0)
-# 
-# predicciones_gasto <- data.frame(lapply(predicciones_difs, 
-#                                        function(x) calculo_gasto_compra))
-# 
-# 
+##9.2. REGRESIONES BOGOTÁ ----
+
+
+
+##9.3. REGRESIONES UNIFICADAS ----
+
+
+### PARTIR LAS BASES DE DATOS: TRAIN, EVAL, TEST.
+
+### 9.5.1. Partición de la base de datos en tres----
+
+#La base de datos Train se divide en tres particiones:
+# Tr_train: Entrenar el modelo
+# Tr_eval: Evaluar, ajustar y refinar el modelo
+# Tr_test: Probar el modelo
+
+
+# Revisar: Generamos las particiones.
+set.seed(100)
+split1 <- createDataPartition(train$price, p = .7)[[1]]
+length(split1) 
+
+other <- train[-split1,]
+Tr_train <- train[split1,]
+
+split2 <- createDataPartition(other$price, p = 1/3)[[1]]
+
+Tr_eval <- other[ split2,]
+Tr_test <- other[-split2,]
+
+nrow(Tr_train)
+nrow(Tr_eval)
+nrow(Tr_test)
+
+nrow(Tr_train)+nrow(Tr_eval)+nrow(Tr_test)==nrow(train)
+
+rm(list=c("other","split1","split2"))
+
+
+##Modelo Tree_unificado
+
+colnames(train)
+
+form_tree <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          num_parq +
+                          factor(ESTRATO) + 
+                          area_apto + 
+                          AVALUO_COM +
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
+
+
+#cp_alpha<-seq(from = 0, to = 0.1, length = 10)
+
+#Ensayo de tree con un control de internet:
+
+tree <- train(
+  form_tree,
+  data = Tr_train, #Debería ser la de las variables con Factores?
+  method = "rpart",
+  trControl = control,
+  parms=list(split='Gini'),
+  #tuneGrid = expand.grid(cp = cp alpha)#,
+  na.action  = na.pass,
+  tuneLength=200
+  #preProcess = c("center", "scale")
+)
+
+tree
+rpart.plot::prp(tree$finalModel)
+
+nrow(Tr_test)
+
+#Cálculo del índice desempeño del modelo:
+pred_tree <- predict(tree,Tr_test)
+pred_tree_df <- data.frame(pred_tree)
+
+
+#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
+nrow(Tr_test) - nrow(pred_tree_df) #Dif. entre la base y el num de predicciones
+colSums(is.na(Tr_test)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
+
+#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
+pred_tree_df <- cbind(filter(Tr_test[,c("property_id","price")],
+                             !(is.na(Tr_test$ESTRATO)|is.na(Tr_test$AVALUO_COM))), #Filtra obs de la var con NAs
+                      pred_tree_df)
+
+nrow(pred_tree_df)
+pred_tree_df$geometry <- NULL #Elimino geometría
+
+pred_tree_df$error_tree1 <- pred_tree_df$pred_tree -pred_tree_df$price
+pred_tree_df$compra_tree1 <- decision_compra(pred_tree_df$pred_tree,pred_tree_df$error_tree1)
+
+resumen_modelos[2,1] <- "Bog+Med"
+resumen_modelos[2,2] <- nrow(pred_tree_df)
+resumen_modelos[2,3] <- "Tree 2"
+resumen_modelos[2,4] <- sum(pred_tree_df$price)
+resumen_modelos[2,5] <- sum(pred_tree_df$compra_tree1)
+resumen_modelos[2,6] <- sum(pred_tree_df$price) - sum(pred_tree_df$compra_tree1)
+resumen_modelos[2,7] <- sum(pred_tree_df$compra_tree1>0)
+resumen_modelos[2,8] <- (sum(pred_tree_df$compra_tree1>0)/nrow(pred_tree_df))*100
+resumen_modelos[2,9] <- sum(pred_tree_df$compra_tree1>0) / sum(pred_tree_df$compra_tree1)
+resumen_modelos[2,10] <- mean(pred_tree_df$error_tree1^2)
+
+rm(pred_tree_df)
+
+
+
+
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
