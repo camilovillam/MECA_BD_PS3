@@ -281,7 +281,6 @@ table(duplicated(test_med[,1]))
 # 4. MANZANAS BOGOTÁ Y OTRAS VARIABLES ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#MANZANAS BOG ----
 
 loc_bog <- read_sf("./stores/localidades_Bog_shp/Loca.shp")
 loc_bog<-st_transform(loc_bog, 4326)
@@ -531,6 +530,396 @@ test_bog_manz <- left_join(test_bog_manz,estrato_bog[,c("MANCODIGO","ESTRATO")],
 
 colSums(is.na(train_bog_manz))
 colSums(is.na(test_bog_manz))
+
+
+
+
+#### AGREGAR VARIABLES DE TEXTO CALCULADAS----
+
+train_bog_manz <- import("./stores/Bogota/train_bog_manz.rds")
+test_bog_manz <- import("./stores/Bogota/test_bog_manz.rds")
+
+train_bog_compl <- import("./stores/Bogota/20220724_train_bog.rds")
+test_bog_compl <- import("./stores/Bogota/20220724_test_bog.rds")
+
+colSums(is.na(train_bog_compl))
+colSums(is.na(test_bog_compl))
+
+#Le pego las manzanas:
+
+train_bog_compl$MANCODIGO <- NULL
+train_bog_compl$MANZANA_ID <- NULL
+train_bog_compl$MANZ_CAG <- NULL
+
+test_bog_compl$MANCODIGO <- NULL
+test_bog_compl$MANZANA_ID <- NULL
+test_bog_compl$MANZ_CAG <- NULL
+
+
+train_bog_compl <- left_join(train_bog_compl,train_bog_manz,by="property_id")
+test_bog_compl <- left_join(test_bog_compl,test_bog_manz,by="property_id")
+
+
+#NIVEL DE AGREGACIÓN PARA LAS VARIABLES:
+
+#Manzana ... UPL ... LocNombre
+
+#########################################################
+
+####Cargo vars texto ----
+
+#Cargo el archivo que se había guardado previamente
+
+test_var_texto <- import("./stores/test_prop_vars_texto.rds")
+train_var_texto <- import("./stores/train_prop_vars_texto.rds")
+
+nrow(test_var_texto)
+nrow(train_var_texto)
+
+colSums(is.na(test_var_texto))
+colSums(is.na(train_var_texto))
+
+
+colnames(test_var_texto)
+
+test_var_texto <- test_var_texto[,c("property_id","new_surface","new_rooms",
+                                    "new_bathroom","new_parq")]
+
+
+train_var_texto <- train_var_texto[,c("property_id","new_surface","new_rooms",
+                                      "new_bathroom","new_parq")]
+
+nrow(test_prop)
+nrow(train_prop)
+
+colSums(is.na(test_var_texto))
+colSums(is.na(train_var_texto))
+
+#Se ajustan espacios y otros caracteres, se convierte a numérico:
+
+#Para test:
+test_var_texto$new_surface <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", test_var_texto$new_surface)),"\\s", ""))
+
+test_var_texto$new_rooms <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", test_var_texto$new_rooms)),"\\s", ""))
+
+test_var_texto$new_bathroom <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", test_var_texto$new_bathroom)),"\\s", ""))
+
+test_var_texto$new_parq <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", test_var_texto$new_parq)),"\\s", ""))
+
+
+#Para train:
+train_var_texto$new_surface <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", train_var_texto$new_surface)),"\\s", ""))
+
+train_var_texto$new_rooms <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", train_var_texto$new_rooms)),"\\s", ""))
+
+train_var_texto$new_bathroom <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", train_var_texto$new_bathroom)),"\\s", ""))
+
+train_var_texto$new_parq <- as.double(
+  str_replace_all(
+    gsub(",","\\.",
+         gsub("[[:space:]]", "", train_var_texto$new_parq)),"\\s", ""))
+
+
+#Se hacen los join con las bases originales
+test_bog_compl <- left_join(test_bog_compl,test_var_texto,by="property_id")
+train_bog_compl <- left_join(train_bog_compl,train_var_texto,by="property_id")
+
+
+
+
+#Eliminación de áreas improbables, posibles errores en la extracción de texto:
+
+test_bog_compl$new_surface <- ifelse(test_bog_compl$new_surface<20,
+                                NA, test_bog_compl$new_surface)
+
+train_bog_compl$new_surface <- ifelse(train_bog_compl$new_surface<20,
+                                 NA, train_bog_compl$new_surface)
+
+
+#Calculo la mejor área disponible. Inicialmente, entre la original y la de texto:
+
+test_bog_compl$area_apto <- case_when(
+  !is.na(test_bog_compl$surface_total) ~ test_bog_compl$surface_total,
+  !is.na(test_bog_compl$new_surface) ~ test_bog_compl$new_surface)
+
+train_bog_compl$area_apto <- case_when(
+  !is.na(train_bog_compl$surface_total) ~ train_bog_compl$surface_total,
+  !is.na(train_bog_compl$new_surface) ~ as.double(train_bog_compl$new_surface))
+
+
+colSums(is.na(train_bog_compl))
+colSums(is.na(test_bog_compl))
+
+
+#A los que todavía quedan con NAs, les debo imputar los promedios:
+
+
+####Imputación para Bogotá: ----
+
+train_bog_compl_df <- train_bog_compl
+test_bog_compl_df <- test_bog_compl
+
+train_bog_compl_df$geometry <- NULL
+test_bog_compl_df$geometry <- NULL
+
+
+#Creo una base con todas las observaciones de Medellín
+test_bog_compl_df['price'] <- NA
+props_bog <- rbind(test_bog_compl_df,train_bog_compl_df)
+
+
+props_bog_ok <- filter(props_bog,!(is.na(props_bog$area_apto)))
+
+agr_area_bog_mzn <- props_bog_ok %>% 
+  group_by(MANCODIGO) %>%
+  summarize(area_mzn_medianb=median(area_apto))
+
+agr_area_bog_upl <- props_bog_ok %>% 
+  group_by(UPlNombre) %>%
+  summarize(area_upl_medianb=median(area_apto))
+
+agr_area_bog_loc <- props_bog_ok %>% 
+  group_by(LocNombre) %>%
+  summarize(area_loc_medianb=median(area_apto))
+
+
+props_bog <- left_join(props_bog,agr_area_bog_mzn,by="MANCODIGO")
+props_bog <- left_join(props_bog,agr_area_bog_upl,by="UPlNombre")
+props_bog <- left_join(props_bog,agr_area_bog_loc,by="LocNombre")
+
+colSums(is.na(props_bog))
+
+
+
+#Hago la imputación final de área del apartamento:
+
+props_bog$area_apto <- case_when(
+  !is.na(props_bog$surface_total) ~ props_bog$surface_total, #1°, área database
+  !is.na(props_bog$new_surface) ~ props_bog$new_surface, #Luego, área texto
+  !is.na(props_bog$area_mzn_medianb) ~ props_bog$area_mzn_medianb, #Luego, área manzana
+  !is.na(props_bog$area_upl_medianb) ~ props_bog$area_upl_medianb, #Luego, área UPL
+  !is.na(props_bog$area_loc_medianb) ~ props_bog$area_loc_medianb) #Al final, área Loc
+
+colSums(is.na(props_bog))
+
+#Le pego ese valor a las bases
+
+test_bog_compl <- left_join(test_bog_compl,props_bog[,c("property_id","area_apto")],
+                      by="property_id")
+
+train_bog_compl <- left_join(train_bog_compl,props_bog[,c("property_id","area_apto")],
+                       by="property_id")
+
+
+colSums(is.na(test_bog_compl))
+colSums(is.na(train_bog_compl))
+
+test_bog_compl$area_apto <- test_bog_compl$area_apto.y 
+train_bog_compl$area_apto <- train_bog_compl$area_apto.y 
+
+test_bog_compl[,c("area_apto.x","area_apto.y")] <- list(NULL)
+train_bog_compl[,c("area_apto.x","area_apto.y")] <- list(NULL)
+
+
+
+#BAÑOS DE LA PROPIEDAD: ----
+
+#Creo una variable con la mejor info disponible:
+
+props_bog$num_banos <- case_when(
+  !is.na(props_bog$bathrooms) ~ props_bog$bathrooms,
+  !is.na(props_bog$new_bathroom) ~ props_bog$new_bathroom)
+
+props_bog_ok <- filter(props_bog,!(is.na(props_bog$num_banos)))
+
+agr_banos_bog_mzn <- props_bog_ok %>% 
+  group_by(MANCODIGO) %>%
+  summarize(banos_mzn=median(num_banos))
+
+agr_banos_bog_upl <- props_bog_ok %>% 
+  group_by(UPlNombre) %>%
+  summarize(banos_upl=median(num_banos))
+
+agr_banos_bog_loc <- props_bog_ok %>% 
+  group_by(LocNombre) %>%
+  summarize(banos_loc=median(num_banos))
+
+
+props_bog <- left_join(props_bog,agr_banos_bog_mzn,by="MANCODIGO")
+props_bog <- left_join(props_bog,agr_banos_bog_upl,by="UPlNombre")
+props_bog <- left_join(props_bog,agr_banos_bog_loc,by="LocNombre")
+
+colSums(is.na(props_bog))
+
+
+#Hago la imputación final de # de baños:
+
+props_bog$num_banos <- case_when(
+  !is.na(props_bog$bathrooms) ~ props_bog$bathrooms,
+  !is.na(props_bog$new_bathroom) ~ props_bog$new_bathroom,
+  !is.na(props_bog$banos_mzn) ~ props_bog$banos_mzn,
+  !is.na(props_bog$banos_upl) ~ props_bog$banos_upl,
+  !is.na(props_bog$banos_loc) ~ props_bog$banos_loc)
+
+
+#Le pego ese valor a las bases
+
+test_bog_compl <- left_join(test_bog_compl,props_bog[,c("property_id","num_banos")],
+                      by="property_id")
+
+train_bog_compl <- left_join(train_bog_compl,props_bog[,c("property_id","num_banos")],
+                       by="property_id")
+
+
+colSums(is.na(test_bog_compl))
+colSums(is.na(train_bog_compl))
+
+
+
+
+#CUARTOS DE LA PROPIEDAD: ----
+
+#Creo una variable con la mejor info disponible:
+
+props_bog$num_cuartos <- case_when(
+  !is.na(props_bog$rooms) ~ props_bog$rooms,
+  !is.na(props_bog$new_rooms) ~ props_bog$new_rooms)
+
+props_bog_ok <- filter(props_bog,!(is.na(props_bog$num_cuartos)))
+
+agr_cuartos_bog_mzn <- props_bog_ok %>% 
+  group_by(MANCODIGO) %>%
+  summarize(cuartos_mzn=median(num_cuartos))
+
+agr_cuartos_bog_upl <- props_bog_ok %>% 
+  group_by(UPlNombre) %>%
+  summarize(cuartos_upl=median(num_cuartos))
+
+agr_cuartos_bog_loc <- props_bog_ok %>% 
+  group_by(LocNombre) %>%
+  summarize(cuartos_loc=median(num_cuartos))
+
+
+props_bog <- left_join(props_bog,agr_cuartos_bog_mzn,by="MANCODIGO")
+props_bog <- left_join(props_bog,agr_cuartos_bog_upl,by="UPlNombre")
+props_bog <- left_join(props_bog,agr_cuartos_bog_loc,by="LocNombre")
+
+colSums(is.na(props_bog))
+
+
+#Hago la imputación final de # cuartos:
+
+props_bog$num_cuartos <- case_when(
+  !is.na(props_bog$rooms) ~ props_bog$rooms,
+  !is.na(props_bog$new_rooms) ~ props_bog$new_rooms,
+  !is.na(props_bog$cuartos_mzn) ~ props_bog$cuartos_mzn,
+  !is.na(props_bog$cuartos_upl) ~ props_bog$cuartos_upl,
+  !is.na(props_bog$cuartos_loc) ~ props_bog$cuartos_loc)
+
+
+#Le pego ese valor a las bases
+
+test_bog_compl <- left_join(test_bog_compl,props_bog[,c("property_id","num_cuartos")],
+                      by="property_id")
+
+train_bog_compl <- left_join(train_bog_compl,props_bog[,c("property_id","num_cuartos")],
+                       by="property_id")
+
+colSums(is.na(test_bog_compl))
+colSums(is.na(train_bog_compl))
+
+
+
+#NÚMERO DE PARQUEADEROS DE LA PROPIEDAD: ----
+
+props_bog_ok <- filter(props_bog,!(is.na(props_bog$new_parq)))
+
+agr_parq_bog_mzn <- props_bog_ok %>% 
+  group_by(MANCODIGO) %>%
+  summarize(parq_mzn=median(new_parq))
+
+agr_parq_bog_upl <- props_bog_ok %>% 
+  group_by(UPlNombre) %>%
+  summarize(parq_upl=median(new_parq))
+
+agr_parq_bog_loc <- props_bog_ok %>% 
+  group_by(LocNombre) %>%
+  summarize(parq_loc=median(new_parq))
+
+
+props_bog <- left_join(props_bog,agr_parq_bog_mzn,by="MANCODIGO")
+props_bog <- left_join(props_bog,agr_parq_bog_upl,by="UPlNombre")
+props_bog <- left_join(props_bog,agr_parq_bog_loc,by="LocNombre")
+
+colSums(is.na(props_bog))
+
+
+#Hago la imputación final de# parqueaderos:
+
+props_bog$num_parq <- case_when(
+  !is.na(props_bog$new_parq) ~ props_bog$new_parq,
+  !is.na(props_bog$parq_mzn) ~ props_bog$parq_mzn,
+  !is.na(props_bog$parq_upl) ~ props_bog$parq_upl,
+  !is.na(props_bog$parq_loc) ~ props_bog$parq_loc)
+
+
+#Le pego ese valor a las bases
+
+test_bog_compl <- left_join(test_bog_compl,props_bog[,c("property_id","num_parq")],
+                      by="property_id")
+
+train_bog_compl <- left_join(train_bog_compl,props_bog[,c("property_id","num_parq")],
+                       by="property_id")
+
+colSums(is.na(test_bog_compl))
+colSums(is.na(train_bog_compl))
+
+test_bog_compl[,c("new_surface","new_rooms","new_bathroom","new_parq")] <- list(NULL)
+train_bog_compl[,c("new_surface","new_rooms","new_bathroom","new_parq")] <- list(NULL)
+
+
+colSums(is.na(test_bog_compl))
+colSums(is.na(train_bog_compl))
+
+nrow(test_bog_compl)
+nrow(train_bog_compl)
+
+
+
+export(test_bog_compl,"./stores/Bogota/test_bog_compl.rds")
+export(train_bog_compl,"./stores/Bogota/train_bog_compl.rds")
+
+
+rm(list=ls(pattern="^agr"))
+rm(list=c("props_bog_ok",
+          "test_bog_compl_df","train_bog_compl_df",
+          "test_var_texto","train_var_texto"))
+
+
+
+#########################################################
+
 
 
   
