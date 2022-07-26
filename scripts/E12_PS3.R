@@ -501,31 +501,89 @@ test_vf_tablas  %>%
   add_overall() %>%
   add_n()
 
-#Tabla de pomedio área por ciudad en test
+#Tabla de media área por ciudad en train
 
 fn_add_mean <- function(data, variable, ...) {
   data %>%
     dplyr::group_by(.data[[variable]]) %>%
     dplyr::arrange(.data[[variable]]) %>%
-    dplyr::summarise(train_vf_tablas = mean(train_vf_tablas, na.rm = TRUE)) %>%
-    select(train_vf_tablas) %>%
-    mutate(train_vf_tablas = style_sigfig(train_vf_tablas))
+    dplyr::summarise(area_apto = mean(area_apto, na.rm = TRUE)) %>%
+    dplyr::select(area_apto) %>%
+    mutate(area_apto = style_sigfig(area_apto))
 }
 
+fn_add_mean(train_vf_tablas, "l3")
+
 tbl <-
-  area  %>%
-  select(l3, area_apto) %>%
+  train_vf_tablas  %>%
+  dplyr::select(l3, area_apto) %>%
   tbl_summary(
-    include  = -train_vf_tablas,
+    include  = -area_apto,
     type = everything() ~ "categorical"
   ) %>%
   add_stat(
     all_categorical() ~ fn_add_mean,
     location = all_categorical() ~  "level"
   ) %>%
-  modify_header(train_vf_tablas ~ "**Medis área**")
+  modify_header(area_apto ~ "**Media área apto**")
 
+tbl 
 
+#Tabla de media área por ciudad en test
+
+fn_add_mean <- function(data, variable, ...) {
+  data %>%
+    dplyr::group_by(.data[[variable]]) %>%
+    dplyr::arrange(.data[[variable]]) %>%
+    dplyr::summarise(area_apto = mean(area_apto, na.rm = TRUE)) %>%
+    dplyr::select(area_apto) %>%
+    mutate(area_apto = style_sigfig(area_apto))
+}
+
+fn_add_mean(test_vf_tablas, "l3")
+
+tbl2 <-
+  test_vf_tablas  %>%
+  dplyr::select(l3, area_apto) %>%
+  tbl_summary(
+    include  = -area_apto,
+    type = everything() ~ "categorical"
+  ) %>%
+  add_stat(
+    all_categorical() ~ fn_add_mean,
+    location = all_categorical() ~  "level"
+  ) %>%
+  modify_header(area_apto ~ "**Media área apto**")
+
+tbl2 
+
+#Tabla de la media del precio por ciudad en train
+
+fn_add_mean <- function(data, variable, ...) {
+  data %>%
+    dplyr::group_by(.data[[variable]]) %>%
+    dplyr::arrange(.data[[variable]]) %>%
+    dplyr::summarise(price = mean(price, na.rm = TRUE)) %>%
+    dplyr::select(price) %>%
+    mutate(price= style_sigfig(price))
+}
+
+fn_add_mean(train_vf_tablas, "l3")
+
+tbl3 <-
+  train_vf_tablas  %>%
+  dplyr::select(l3, price) %>%
+  tbl_summary(
+    include  = -price,
+    type = everything() ~ "categorical"
+  ) %>%
+  add_stat(
+    all_categorical() ~ fn_add_mean,
+    location = all_categorical() ~  "level"
+  ) %>%
+  modify_header(price ~ "**Media pecio vivienda**")
+
+tbl3 
 
 ##5.0. subir base y prepararla ----
 
@@ -1467,7 +1525,7 @@ decision_compra <- function(x,y) case_when(y > 0 ~ x,
                                            abs(y) < 40000000 ~ x,
                                            abs(y) > 40000000 ~ 0)
 
-#Definición del control (a usarse en los demás modelos)----
+###Definición del control (a usarse en los demás modelos)----
 #fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
 
 control <- trainControl(method = "cv", number = 5,
@@ -1479,7 +1537,7 @@ control <- trainControl(method = "cv", number = 5,
 ###5.6.3. XGBoost 1 ----
 
 xgb_bog1 <- as.formula (price ~ AVALUO_COM+
-                                ESTRATO+
+                                factor(ESTRATO)+
                                 area_apto+
                                 num_banos+
                                 num_cuartos+
@@ -1609,8 +1667,8 @@ end_xg - start_xg
 
 rm(pred_xgb2_df)
 
-export(resumen_modelos,"./views/Resumen_modelos_bog.xlsx")
 
+export(resumen_modelos,"./views/Resumen_modelos_bog.xlsx")
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 6. MODELO MEDELLÍN ----
