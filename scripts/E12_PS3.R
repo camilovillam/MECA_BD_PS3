@@ -49,6 +49,7 @@ p_load(rio,
        rpart.plot,
        glmnet,
        xgboost,
+       randomForest,
        sfheaders,
        nngeo,
        parallel,
@@ -2476,7 +2477,7 @@ test[,c("rooms","bathrooms","surface_total","surface_covered")] <- list(NULL)
 train[,c("rooms","bathrooms","surface_total","surface_covered")] <- list(NULL)
 
 
-export( <- ,"./stores/test_compl.rds")
+export(test,"./stores/test_compl.rds")
 export(train,"./stores/train_compl.rds")
 
 
@@ -3095,6 +3096,45 @@ xgboost
 export(xgboost,"./stores/trained_models/xgboost.rds")
 
 
+
+
+#XGBoost 2 ----
+
+form_xgboost2 <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          num_parq +
+                          ESTRATO +
+                          area_apto + 
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
+
+grid_default <- expand.grid(nrounds = c(250,500),
+                            max_depth = c(4,6,8),
+                            eta = c(0.01,0.3,0.5),
+                            gamma = c(0,1),
+                            min_child_weight = c(10, 25,50),
+                            colsample_bytree = c(0.7),
+                            subsample = c(0.6))
+
+xgboost2 <- train(
+  form_xgboost2,
+  data = Tr_train,
+  method = "xgbTree",
+  trControl = control,
+  na.action  = na.pass,
+  tuneGrid = grid_default,
+  preProcess = c("center", "scale")
+)
+xgboost2
+export(xgboost2,"./stores/trained_models/xgboost.rds")
+
+
+
+
 #Cálculo del índice desempeño del modelo:
 pred_xgboost <- predict(xgboost,Tr_test)
 pred_xgboost_df <- data.frame(pred_xgboost)
@@ -3129,6 +3169,88 @@ resumen_modelos[2,10] <- mean(pred_tree_df$error_tree1^2)
 rm(pred_tree_df)
 
 
+
+### Random Forest: ----
+
+form_randomforest <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          num_parq +
+                          ESTRATO +
+                          area_apto + 
+                          AVALUO_COM +
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
+
+
+colnames(Tr_train)
+colSums(is.na(Tr_train))
+
+Tr_train_forest <- Tr_train
+Tr_train_forest$geometry <- NULL
+
+Tr_train_forest <- filter(Tr_train_forest[,c("price", 
+                          "num_banos", 
+                          "bedrooms"  ,
+                          "num_cuartos",  
+                          "num_parq" ,
+                          "ESTRATO" ,
+                          "area_apto"  ,
+                          "AVALUO_COM", 
+                          "dist_tpubl" ,
+                          "dist_hosp",
+                          "dist_ccomerc", 
+                          "dist_park")])
+
+
+Tr_train_forest <- Tr_train_forest[complete.cases(Tr_train_forest), ]
+
+nrow(Tr_train_forest)
+# 
+# control <- trainControl(method = "cv", number = 5,
+#                         #summaryFunction = fiveStats, 
+#                         classProbs = TRUE,
+#                         verbose=FALSE,
+#                         savePredictions = T)
+
+set.seed(100)
+
+control_rf <- trainControl(method='cv', 
+                        number=5,
+                        verbose=FALSE,
+                        savePredictions = T)
+
+mtry <- sqrt(11)
+
+tunegrid_rf <- expand.grid(.mtry=mtry)
+
+forest <- train(form_randomforest, 
+                data=Tr_train, 
+                method='rf',
+                trControl = control_rf,
+                na.action  = na.pass,
+                tuneGrid=tunegrid_rf)
+
+# print(forest)
+# 
+# forest <- train(
+#   form_randomforest,
+#   data = Tr_train,
+#   method = "rf",
+#   trControl = control,
+#   na.action  = na.pass,
+#   family = "binomial"
+#   #metric="Sens",
+#   #preProcess = c("center", "scale")
+# )
+
+forest
+
+
+?train
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
