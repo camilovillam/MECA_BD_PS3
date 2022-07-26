@@ -243,7 +243,845 @@ test_bog <-subset(test_prop,test_prop$l3 =="Bogotá D.C")
 
 ##3.1. Variables de texto----
 
+#Se cargan las bases de datos
+
+setwd("/Users/jorgeeduardogarcia/Desktop/BIG_DATA/datos_ps3")
+train_prop <- readRDS("~/Desktop/BIG_DATA/datos_ps3/dataPS3/train.Rds")
+test_prop <- readRDS("~/Desktop/BIG_DATA/datos_ps3/dataPS3/test.Rds")
+
+##Se cargan las librerías con la función P_load
+
+install.packages("pacman")
+
+require("pacman")
+p_load(tidyverse,rio,
+       sf, 
+       leaflet,
+       tmaptools, 
+       osmdata, 
+       skim,
+       class)
+install.packages("class")
+require("class")
+
+
+#Ahora se observa la base de datos
+View(train_prop)
+table(train_prop$l3)
+skim(train_prop)
+
+#Se obeservan los NA's de la superficie total y del área cubierta, pues son variables de interés en el precio de la vivienda
+table(is.na(train_prop$surface_total)) # en el área total hay 79845 na's
+table(is.na(train_prop$surface_covered)) # en la superficie cubierta hay 87368 na's
+
+#Sin embargo, al momento de revisar la variable "descripción" se evidencia que el texto puede corroborar la información faltante reportada como na
+##´Demostración con área total de la vivienda
+attach(train_prop)
+description
+description[125]
+
+
+#Se crea una sola variable que contiene la latitud y la longitud para poderlo visualizar
+train_prop_sf = train_prop %>% st_as_sf(coords=c("lon", "lat"),crs=4326)
+
+class(train_prop_sf)
+
+#Plot mapas
+leaflet() %>% addTiles() %>% addCircles(data=train_prop_sf)
+
+
+##Ahora se va a extraer datos del texto
+
+
+#Antes de crear el patrón, se cambian todas las letras d ela variable descripción de mayúsucla a minúscula
+attach(train_prop_sf)
+train_prop_sf$description <- str_to_lower(description)
+train_prop_sf
+
+##Estandarización ### Ahora se transforman las unidades de medidas, cambiándolas todas a mt2
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "metros cuadrados" , 
+                                            replacement = "mt2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "mts" , 
+                                            replacement = "mt2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "m²" , 
+                                            replacement = "mt2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "mtrs2", 
+                                            replacement = "mt2")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "m2" ,
+                                            replacement = "mt2")
+                                    
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "mts2" ,
+                                            replacement = "mt2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "metros" ,
+                                            replacement = "mt2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cien" , 
+                                            replacement = "mt2")
+
+##Se intentó con la sola letra "m". Sin embargo, reemplaza en todo lo que tenga la letra "m", por lo cual dessconfigura el texto de la variable descripcioón.
+
+#Se hace la prueba con algunas filas para identificar si el cambio se realizó en la base 
+
+train_prop_sf$description[59469]
+train_prop_sf$description[59216]
+train_prop_sf$description[39765]
+train_prop_sf$description[14]
+train_prop_sf$description[18]
+train_prop_sf$description[40339]
+                                            
+                                           
+
+#Se crean patrones para extraer el área medida en metro cuadrado de la vivienda, de la variable descripción
+
+
+patron1 = "[:space:]+[:digit:]+[:space:]+[:punct:]+[:digit:]+[:space:]+mt2"
+patron2 = "[:space:]+[:digit:]+mt2" ## pattern
+patron3 = "[:space:]+[:digit:]+[:space:]+mt2" ## pattern
+patron4 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+[:space:]+mt2" ## pattern
+patron5 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+mt2" ## pattern
+patron6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2" ## pattern
+patron7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+mt2" ## pattern
+
+
+##Ahora se extrae la información
+
+
+str_extract(string=train_prop_sf$description[1:107567] ,
+            pattern= paste0( patron1, "|" ,patron2, "|" ,patron3, "|" ,patron4,
+                             "|" ,patron5, "|" ,patron6, "|" ,patron7)) ## extrac pattern
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = str_extract(string=train_prop_sf$description , pattern= patron1))
+table(train_prop_sf$new_surface)
+
+
+sum(table(train_prop_sf$new_surface))
+
+
+##Ahora el patrón 2
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron2),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+##Ahora el patrón 3
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron3),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+##Patrón 4
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron4),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+##Patrón 5
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron5),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+##Patrón 6 
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron6),
+                              new_surface))
+sum(table(train_prop_sf$new_surface))
+
+#Patrón 7
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patron7),
+                              new_surface))
+
+sum(table(train_prop_sf$new_surface))
+
+###Ahora se elimina la unidad de medida para que quede solo el número de área 
+
+train_prop_sf$new_surface<-gsub("mt2", "", train_prop_sf$new_surface)
+
+
+#####OTRA VARIABLE #####
+
+##Número de cuartos
+
+#Se ven los Na's para determinar cuál se interviene
+
+table(is.na(train_prop$bedrooms))
+table(is.na(train_prop$rooms))
+
+##VARIABLE ROOMS
+
+##Se estandariza para llamar a las habitaciones y parecidos como "aposento"
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habitaciones" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habitacion" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habitación" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habitacin" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "alcobas" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "alcoba" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "dormitorios" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "dormitorio" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cuartos" , 
+                                            replacement = "aposento")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cuarto" , 
+                                            replacement = "aposento")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "habs" , 
+                                            replacement = "aposento")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "hab" , 
+                                            replacement = "aposento")
+
+
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patronapo1 = "[:space:]+[:digit:]+[:space:]+aposento"
+patronapo2 ="[:space:]+[:digit:]+aposento"
+patronapo3 = "[:digit:]+aposento"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_rooms = str_extract(string=train_prop_sf$description , pattern= patronapo1))
+table(train_prop_sf$new_rooms)
+
+sum(table(train_prop_sf$new_rooms))
+
+##Patrón 2
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_rooms = ifelse(is.na(new_rooms)==T,
+                            str_extract(string=train_prop_sf$description , pattern= patronapo2),
+                            new_rooms))
+
+sum(table(train_prop_sf$new_rooms))
+
+#Patrón 3
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_rooms = ifelse(is.na(new_rooms)==T,
+                            str_extract(string=train_prop_sf$description , pattern= patronapo3),
+                            new_rooms))
+
+sum(table(train_prop_sf$new_rooms))
+
+###Ahora se elimina la unidad de medida para que quede solo el número de cuartos (aposentos)
+
+train_prop_sf$new_rooms<-gsub("aposento", "", train_prop_sf$new_rooms)
+
+##Baños
+
+##Estandarización ### Ahora se renombran a todos "baños"
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "banos" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "bano" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "baos" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "bañoss" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "bao" , 
+                                            replacement = "baños")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "baño" , 
+                                            replacement = "baños")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "baño" , 
+                                            replacement = "baños")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "un" , 
+                                            replacement = "1")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "dos" , 
+                                            replacement = "2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "tres" , 
+                                            replacement = "3")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cuatro" , 
+                                            replacement = "4")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cinco" , 
+                                            replacement = "5")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "seis" , 
+                                            replacement = "6")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "siete" , 
+                                            replacement = "7")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "ocho" , 
+                                            replacement = "8")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "nueve" , 
+                                            replacement = "9")
+
+train_prop_sf$description[9642]
+
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patronb1 = "[:space:]+[:digit:]+[:space:]+baños"
+patronb2 ="[:space:]+[:digit:]+baños"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_bathroom = str_extract(string=train_prop_sf$description , pattern= patronb1))
+table(train_prop_sf$new_bathroom)
+
+
+sum(table(train_prop_sf$new_bathroom))
+
+##Patrón 2
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_bathroom = ifelse(is.na(new_bathroom)==T,
+                              str_extract(string=train_prop_sf$description , pattern= patronb2),
+                              new_bathroom))
+
+sum(table(train_prop_sf$new_bathroom))
+
+###Ahora se elimina la unidad de medida para que quede solo el número de baño
+
+train_prop_sf$new_bathroom<-gsub("baños", "", train_prop_sf$new_bathroom)
+
+
+####OTRA VARIABLE
+
+##PARQUEADEROS
+
+##Estandarización ### Ahora se renombran a todos "baños"
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "parqueadero" , 
+                                            replacement = "parqueaderos")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "garajes" , 
+                                            replacement = "parqueaderos")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "garaje" , 
+                                            replacement = "parqueaderos")
+
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "un" , 
+                                            replacement = "1")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "dos" , 
+                                            replacement = "2")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "tres" , 
+                                            replacement = "3")
+
+train_prop_sf$description <-str_replace_all(train_prop_sf$description, pattern = "cuatro" , 
+                                            replacement = "4")
+
+
+train_prop_sf$description[9642]
+
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patronp1 = "[:space:]+[:digit:]+[:space:]+parqueaderos"
+patronp2 ="[:space:]+[:digit:]+parqueaderos"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_parq = str_extract(string=train_prop_sf$description , pattern= patronp1))
+table(train_prop_sf$new_parq)
+
+
+sum(table(train_prop_sf$new_parq))
+
+##Patrón 2
+train_prop_sf = train_prop_sf %>% 
+  mutate(new_parq = ifelse(is.na(new_parq)==T,
+                               str_extract(string=train_prop_sf$description , pattern= patronp2),
+                           new_parq))
+
+sum(table(train_prop_sf$new_parq))
+
+###Ahora se elimina la unidad de medida para que quede solo el número de baño
+
+train_prop_sf$new_parq<-gsub("parqueaderos", "", train_prop_sf$new_parq)
+
+##Se procede a guardar la base de datos
+
+train_prop_sf$geometry<- NULL   #Convierte el objeto sf en DataFrame para guardarlo más fácil
+
+setwd("/Users/jorgeeduardogarcia/Desktop/BIG_DATA/MECA_BD_PS3")
+
+saveRDS(train_prop_sf,"./stores/train_prop_vars_texto.rds")
+
+
+
+##SE HACE EL MISMO PROCEDIMIENTO CON LA BASE TEST
+
+
+
+#Se observa la base de datos, pues ya se había cargado
+View(test_prop)
+table(test_prop$l3)
+skim(test_prop)
+
+#Se obeservan los NA's de la superficie total y del área cubierta, pues son variables de interés en el precio de la vivienda
+table(is.na(test_prop$surface_total)) # en el área total hay 9091 na's
+table(is.na(test_prop$surface_covered)) # en la superficie cubierta hay 10003 na's
+
+#Sin embargo, al momento de revisar la variable "descripción" se evidencia que el texto puede corroborar la información faltante reportada como na
+##´Demostración con área total de la vivienda
+attach(test_prop)
+description
+description[150]
+
+
+#Se crea una sola variable que contiene la latitud y la longitud para poderlo visualizar
+test_prop_sf = test_prop %>% st_as_sf(coords=c("lon", "lat"),crs=4326)
+
+class(test_prop_sf)
+
+#Plot mapas
+leaflet() %>% addTiles() %>% addCircles(data=test_prop_sf)
+
+
+##Ahora se va a extraer datos del texto
+
+
+#Antes de crear el patrón, se cambian todas las letras de la variable descripción de mayúsucla a minúscula
+attach(test_prop_sf)
+test_prop_sf$description <- str_to_lower(description)
+test_prop_sf
+
+##Estandarización ### Ahora se transforman las unidades de medidas, cambiándolas todas a mt2
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "metros cuadrados" , 
+                                            replacement = "mt2")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "mts" , 
+                                            replacement = "mt2")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "m²" , 
+                                            replacement = "mt2")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "mtrs2", 
+                                            replacement = "mt2")
+
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "m2" ,
+                                            replacement = "mt2")
+
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "mts2" ,
+                                            replacement = "mt2")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "metros" ,
+                                            replacement = "mt2")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "cien" , 
+                                            replacement = "mt2")
+
+##Se intentó con la sola letra "m". Sin embargo, reemplaza en todo lo que tenga la letra "m", por lo cual dessconfigura el texto de la variable descripcioón.
+
+#Se hace la prueba con algunas filas para identificar si el cambio se realizó en la base 
+
+
+test_prop_sf$description[14]
+test_prop_sf$description[18]
+
+
+#Se crean patrones para extraer el área medida en metro cuadrado de la vivienda, de la variable descripción
+
+
+patron_1 = "[:space:]+[:digit:]+[:space:]+[:punct:]+[:digit:]+[:space:]+mt2"
+patron_2 = "[:space:]+[:digit:]+mt2" ## pattern
+patron_3 = "[:space:]+[:digit:]+[:space:]+mt2" ## pattern
+patron_4 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+[:space:]+mt2" ## pattern
+patron_5 = "[:space:]+[:digit:]+[:punct:]+[:space:]+[:digit:]+mt2" ## pattern
+patron_6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2" ## pattern
+patron_7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+mt2" ## pattern
+
+
+##Ahora se extrae la información
+
+
+str_extract(string=test_prop_sf$description[1:11150] ,
+            pattern= paste0( patron_1, "|" ,patron_2, "|" ,patron_3, "|" ,patron_4,
+                             "|" ,patron_5, "|" ,patron_6, "|" ,patron_7)) ## extrac pattern
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_surface = str_extract(string=test_prop_sf$description , pattern= patron_1))
+table(test_prop_sf$new_surface)
+
+
+sum(table(test_prop_sf$new_surface))
+
+
+##Ahora el patrón 2
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=test_prop_sf$description , pattern= patron_2),
+                              new_surface))
+
+sum(table(test_prop_sf$new_surface))
+
+##Ahora el patrón 3
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=test_prop_sf$description , pattern= patron_3),
+                              new_surface))
+sum(table(test_prop_sf$new_surface))
+
+##Patrón 4
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=test_prop_sf$description , pattern= patron_4),
+                              new_surface))
+
+sum(table(test_prop_sf$new_surface))
+
+##Patrón 5
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=test_prop_sf$description , pattern= patron_5),
+                              new_surface))
+sum(table(test_prop_sf$new_surface))
+
+##Patrón 6 
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=test_prop_sf$description , pattern= patron_6),
+                              new_surface))
+sum(table(test_prop_sf$new_surface))
+
+#Patrón 7
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_surface = ifelse(is.na(new_surface)==T,
+                              str_extract(string=test_prop_sf$description , pattern= patron_7),
+                              new_surface))
+
+sum(table(test_prop_sf$new_surface))
+
+###Ahora se elimina la unidad de medida para que quede solo que el número de metros de la vivienda
+
+test_prop_sf$new_surface<-gsub("mt2", "", test_prop_sf$new_surface)
+
+##VARIABLE ROOMS
+
+##Se estandariza para llamar a las habitaciones y parecidos como "aposento"
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habitaciones" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habitacion" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habitación" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habitacin" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "alcobas" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "alcoba" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "dormitorios" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "dormitorio" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "cuartos" , 
+                                            replacement = "aposento")
+
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "cuarto" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "habs" , 
+                                            replacement = "aposento")
+
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "hab" , 
+                                            replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "room" , 
+                                           replacement = "aposento")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "rooms" , 
+                                           replacement = "aposento")
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patronapo_1 = "[:space:]+[:digit:]+[:space:]+aposento"
+patronapo_2 ="[:space:]+[:digit:]+aposento"
+patronapo_3 = "[:digit:]+aposento"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_rooms = str_extract(string=test_prop_sf$description , pattern= patronapo_1))
+table(test_prop_sf$new_rooms)
+
+sum(table(test_prop_sf$new_rooms))
+
+##Patrón 2
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_rooms = ifelse(is.na(new_rooms)==T,
+                            str_extract(string=test_prop_sf$description , pattern= patronapo_2),
+                            new_rooms))
+
+sum(table(test_prop_sf$new_rooms))
+
+#Patrón 3
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_rooms = ifelse(is.na(new_rooms)==T,
+                            str_extract(string=test_prop_sf$description , pattern= patronapo_3),
+                            new_rooms))
+
+sum(table(test_prop_sf$new_rooms))
+
+###Ahora se elimina la unidad de medida para que quede solo el número de cuartos (aposentos)
+
+test_prop_sf$new_rooms<-gsub("aposento", "", test_prop_sf$new_rooms)
+
+####OTRA VARIABLE
+
+##Baños
+
+##Estandarización ### Ahora se renombran a todos "baños"
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "banos" , 
+                                            replacement = "baños")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "bano" , 
+                                            replacement = "baños")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "baos" , 
+                                            replacement = "baños")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "bañoss" , 
+                                            replacement = "baños")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "bao" , 
+                                            replacement = "baños")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "baño" , 
+                                            replacement = "baños")
+
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "baño" , 
+                                            replacement = "baños")
+
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "un" , 
+                                            replacement = "1")
+
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "dos" , 
+                                            replacement = "2")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "tres" , 
+                                            replacement = "3")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "cuatro" , 
+                                            replacement = "4")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "cinco" , 
+                                            replacement = "5")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "seis" , 
+                                            replacement = "6")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "siete" , 
+                                            replacement = "7")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "ocho" , 
+                                            replacement = "8")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "nueve" , 
+                                            replacement = "9")
+
+
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patron_b1 = "[:space:]+[:digit:]+[:space:]+baños"
+patron_b2 ="[:space:]+[:digit:]+baños"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_bathroom = str_extract(string=test_prop_sf$description , pattern= patron_b1))
+table(test_prop_sf$new_bathroom)
+
+
+sum(table(test_prop_sf$new_bathroom))
+
+##Patrón 2
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_bathroom = ifelse(is.na(new_bathroom)==T,
+                               str_extract(string=test_prop_sf$description , pattern= patron_b2),
+                               new_bathroom))
+
+sum(table(test_prop_sf$new_bathroom))
+
+###Ahora se elimina la unidad de medida (baños) para que solo quede el número de los baños
+
+test_prop_sf$new_bathroom<-gsub("baños", "", test_prop_sf$new_bathroom)
+
+####OTRA VARIABLE
+
+##PARQUEADEROS
+
+##Estandarización ### Ahora se renombran a todos "baños"
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "parqueadero" , 
+                                            replacement = "parqueaderos")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "garajes" , 
+                                            replacement = "parqueaderos")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "garaje" , 
+                                            replacement = "parqueaderos")
+
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "un" , 
+                                            replacement = "1")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "dos" , 
+                                            replacement = "2")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "tres" , 
+                                            replacement = "3")
+
+test_prop_sf$description <-str_replace_all(test_prop_sf$description, pattern = "cuatro" , 
+                                            replacement = "4")
+
+
+test_prop_sf$description[100]
+
+##Ahora se crean los patrones
+
+#Se crean patrones para extraer los baños de la vivienda, de la variable descripción
+
+
+patron_p1 = "[:space:]+[:digit:]+[:space:]+parqueaderos"
+patron_p2 ="[:space:]+[:digit:]+parqueaderos"
+
+##Ahora se crea una variable que refleje los datos extraídos
+
+#Patrón 1
+
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_parq = str_extract(string=test_prop_sf$description , pattern= patron_p1))
+table(train_prop_sf$new_parq)
+
+
+sum(table(test_prop_sf$new_parq))
+
+##Patrón 2
+test_prop_sf = test_prop_sf %>% 
+  mutate(new_parq = ifelse(is.na(new_parq)==T,
+                           str_extract(string=test_prop_sf$description , pattern= patron_p2),
+                           new_parq))
+
+sum(table(test_prop_sf$new_parq))
+
+###Ahora se elimina la unidad de medida (parquederos) para que solo quede el número de parqueaderos
+
+test_prop_sf$new_parq<-gsub("parqueaderos", "", test_prop_sf$new_parq)
+
+##Se procede a guardar la base de datos
+
+test_prop_sf$geometry<- NULL   #Convierte el objeto sf en DataFrame para guardarlo más fácil
+
+setwd("/Users/jorgeeduardogarcia/Desktop/BIG_DATA/MECA_BD_PS3")
+
+saveRDS(test_prop_sf,"./stores/test_prop_vars_texto.rds")
+
+
 ##3.2. Imputación de datos----
+
+
 
 ##3.3. Definición bases datos definitivas ----
 
