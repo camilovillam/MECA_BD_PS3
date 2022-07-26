@@ -2476,7 +2476,7 @@ test[,c("rooms","bathrooms","surface_total","surface_covered")] <- list(NULL)
 train[,c("rooms","bathrooms","surface_total","surface_covered")] <- list(NULL)
 
 
-export(test,"./stores/test_compl.rds")
+export( <- ,"./stores/test_compl.rds")
 export(train,"./stores/train_compl.rds")
 
 
@@ -2493,6 +2493,10 @@ export(train,"./stores/train_compl.rds")
 
 
 #Inicializaciones comunes:
+
+
+test <- import("./stores/test_compl.rds")
+train <- import("./stores/train_compl.rds")
 
 
 ### Matriz de desempeño de los modelos:----
@@ -2951,7 +2955,7 @@ export(resumen_modelos,"./views/Resumen_modelos1.xlsx")
 
 
 
-##9.3. REGRESIONES UNIFICADAS ----
+##9.3. MODELOS UNIFICADOS ----
 
 
 ### PARTIR LAS BASES DE DATOS: TRAIN, EVAL, TEST.
@@ -2984,6 +2988,13 @@ nrow(Tr_test)
 nrow(Tr_train)+nrow(Tr_eval)+nrow(Tr_test)==nrow(train)
 
 rm(list=c("other","split1","split2"))
+
+
+control <- trainControl(method = "cv", number = 5,
+                        #summaryFunction = fiveStats, 
+                        classProbs = TRUE,
+                        verbose=FALSE,
+                        savePredictions = T)
 
 
 ##Modelo Tree_unificado
@@ -3056,12 +3067,72 @@ resumen_modelos[2,8] <- (sum(pred_tree_df$compra_tree1>0)/nrow(pred_tree_df))*10
 resumen_modelos[2,9] <- sum(pred_tree_df$compra_tree1>0) / sum(pred_tree_df$compra_tree1)
 resumen_modelos[2,10] <- mean(pred_tree_df$error_tree1^2)
 
+
+
+
+###Modelo XGBoost 1 ----
+
+form_xgboost <- form_tree
+
+grid_default <- expand.grid(nrounds = c(250,500),
+                            max_depth = c(4,6,8),
+                            eta = c(0.01,0.3,0.5),
+                            gamma = c(0,1),
+                            min_child_weight = c(10, 25,50),
+                            colsample_bytree = c(0.7),
+                            subsample = c(0.6))
+
+xgboost <- train(
+  form_xgboost,
+  data = Tr_train,
+  method = "xgbTree",
+  trControl = control,
+  na.action  = na.pass,
+  tuneGrid = grid_default,
+  preProcess = c("center", "scale")
+)
+xgboost
+export(xgboost,"./stores/trained_models/xgboost.rds")
+
+
+#Cálculo del índice desempeño del modelo:
+pred_xgboost <- predict(tree,Tr_test)
+pred_tree_df <- data.frame(pred_tree)
+
+
+#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
+nrow(Tr_test) - nrow(pred_tree_df) #Dif. entre la base y el num de predicciones
+colSums(is.na(Tr_test)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
+
+#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
+pred_tree_df <- cbind(filter(Tr_test[,c("property_id","price")],
+                             !(is.na(Tr_test$ESTRATO)|is.na(Tr_test$AVALUO_COM))), #Filtra obs de la var con NAs
+                      pred_tree_df)
+
+nrow(pred_tree_df)
+pred_tree_df$geometry <- NULL #Elimino geometría
+
+pred_tree_df$error_tree1 <- pred_tree_df$pred_tree -pred_tree_df$price
+pred_tree_df$compra_tree1 <- decision_compra(pred_tree_df$pred_tree,pred_tree_df$error_tree1)
+
+resumen_modelos[2,1] <- "Bog+Med"
+resumen_modelos[2,2] <- nrow(pred_tree_df)
+resumen_modelos[2,3] <- "Tree 2"
+resumen_modelos[2,4] <- sum(pred_tree_df$price)
+resumen_modelos[2,5] <- sum(pred_tree_df$compra_tree1)
+resumen_modelos[2,6] <- sum(pred_tree_df$price) - sum(pred_tree_df$compra_tree1)
+resumen_modelos[2,7] <- sum(pred_tree_df$compra_tree1>0)
+resumen_modelos[2,8] <- (sum(pred_tree_df$compra_tree1>0)/nrow(pred_tree_df))*100
+resumen_modelos[2,9] <- sum(pred_tree_df$compra_tree1>0) / sum(pred_tree_df$compra_tree1)
+resumen_modelos[2,10] <- mean(pred_tree_df$error_tree1^2)
+
 rm(pred_tree_df)
 
 
 
+
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#10: ESTIMACIÓN MEJOR MODELO Y EXPORTACIÓN FINAL
+#10: ESTIMACIÓN MEJOR MODELO Y EXPORTACIÓN FINAL ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
