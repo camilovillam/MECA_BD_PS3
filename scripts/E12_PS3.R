@@ -3096,8 +3096,8 @@ export(xgboost,"./stores/trained_models/xgboost.rds")
 
 
 #Cálculo del índice desempeño del modelo:
-pred_xgboost <- predict(tree,Tr_test)
-pred_tree_df <- data.frame(pred_tree)
+pred_xgboost <- predict(xgboost,Tr_test)
+pred_xgboost_df <- data.frame(pred_xgboost)
 
 
 #Identifico la variable que tenía NAs para poder luego filtrar observaciones:
