@@ -708,6 +708,35 @@ train_bog_for <- rbind(train_bog_estrato_ok,train_bog_estrato_na_for)
 colSums(is.na(train_bog_for))
 nrow(train_bog_for)
 
+saveRDS(train_bog_for, "stores/20220725_train_bog_estrato.rds")
+
+#Para Test
+
+colSums(is.na(test_bog))
+
+#Dividir Test entre las que sí encontró estrato y los NA (al final se unen)
+test_bog_estrato_ok <- filter(test_bog,!(is.na(test_bog$ESTRATO)))
+test_bog_estrato_na <- filter(test_bog,is.na(test_bog$ESTRATO))
+
+test_bog_estrato_na$ESTRATO <- NULL
+
+start_train = Sys.time()
+test_bog_estrato_na <- st_join(test_bog_estrato_na,estrato_bog[,c('ESTRATO')],
+                                   join = st_nn, k = 1, maxdist = 50, parallel=14)
+end_train = Sys.time()
+end_train - start_train
+
+colSums(is.na(test_bog_estrato_na))
+
+test_bog_estrato_na_df <- sf_to_df(test_bog_estrato_na, fill = TRUE, unlist = NULL)
+
+
+colSums(is.na(test_bog))
+test_bog <- rbind(test_bog_estrato_ok,test_bog_estrato_na)
+colSums(is.na(test_bog))
+
+
+saveRDS(train_bog_mz_na_df,"./stores/Bogota/rds_calculados/MZ_train_NA.rds")
 
 ###5.1.2 Información de OpenSteetMap ----
 
