@@ -1577,7 +1577,6 @@ pred_xgb1_df <- data.frame(pred_xgb1)
 end_xg <- Sys.time()
 start_xg-end_xg
 
-
 #Cálculo del índice desempeño del modelo:
 
 #Le pego al DF con la predicción el precio real 
@@ -1588,15 +1587,16 @@ pred_xgb1_df$geometry <- NULL #Elimino geometría
 pred_xgb1_df$error_xgb1 <- pred_xgb1_df$pred_xgb1 - pred_xgb1_df$price
 pred_xgb1_df$compra_xgb1 <- decision_compra(pred_xgb1_df$pred_xgb1,pred_xgb1_df$error_xgb1)
 
-resumen_modelos[1,1] <- "XGBoost bog 1"
-resumen_modelos[1,2] <- sum(pred_xgb1_df$compra_xgb1)
-resumen_modelos[1,3] <- sum(pred_xgb1_df$compra_xgb1>0)
-resumen_modelos[1,4] <- resumen_modelos[1,2] / resumen_modelos[1,3]
-resumen_modelos[1,5] <- mean(pred_xgb1_df$error_xgb1^2)
-
-
-end_xg <- Sys.time()
-end_xg - start_xg
+resumen_modelos[1,1] <- "Bogotá D.C."
+resumen_modelos[1,2] <- nrow(pred_xgb1_df)
+resumen_modelos[1,3] <- "XGBoost bog 1"
+resumen_modelos[1,4] <- sum(pred_xgb1_df$price)
+resumen_modelos[1,5] <- sum(pred_xgb1_df$compra_xgb1)
+resumen_modelos[1,6] <- sum(pred_xgb1_df$price)-sum(pred_xgb1_df$compra_xgb1)
+resumen_modelos[1,7] <- sum(pred_xgb1_df$compra_xgb1>0)
+resumen_modelos[1,8] <- (sum(pred_xgb1_df$compra_xgb1>0)/nrow(pred_xgb1_df))*100
+resumen_modelos[1,9] <- sum(pred_xgb1_df$compra_xgb1>0) / sum(pred_xgb1_df$compra_xgb1)
+resumen_modelos[1,10] <- mean(pred_xgb1_df$error_xgb1^2)
 
 rm(pred_xgb1_df)
 
@@ -1655,15 +1655,17 @@ pred_xgb2_df$geometry <- NULL #Elimino geometría
 pred_xgb2_df$error_xgb2 <- pred_xgb2_df$pred_xgb2 - pred_xgb2_df$price
 pred_xgb2_df$compra_xgb2 <- decision_compra(pred_xgb2_df$pred_xgb2,pred_xgb2_df$error_xgb2)
 
-resumen_modelos[2,1] <- "XGBoost bog 2"
-resumen_modelos[2,2] <- sum(pred_xgb2_df$compra_xgb2)
-resumen_modelos[2,3] <- sum(pred_xgb2_df$compra_xgb2>0)
-resumen_modelos[2,4] <- resumen_modelos[2,2] / resumen_modelos[2,3]
-resumen_modelos[2,5] <- mean(pred_xgb2_df$error_xgb2^2)
+resumen_modelos[2,1] <- "Bogotá D.C."
+resumen_modelos[2,2] <- nrow(pred_xgb2_df)
+resumen_modelos[2,3] <- "XGBoost bog 2"
+resumen_modelos[2,4] <- sum(pred_xgb2_df$price)
+resumen_modelos[2,5] <- sum(pred_xgb2_df$compra_xgb2)
+resumen_modelos[2,6] <- sum(pred_xgb2_df$price)-sum(pred_xgb2_df$compra_xgb2)
+resumen_modelos[2,7] <- sum(pred_xgb2_df$compra_xgb2>0)
+resumen_modelos[2,8] <- (sum(pred_xgb2_df$compra_xgb2>0)/nrow(pred_xgb2_df))*100
+resumen_modelos[2,9] <- sum(pred_xgb2_df$compra_xgb2>0) / sum(pred_xgb2_df$compra_xgb2)
+resumen_modelos[2,10] <- mean(pred_xgb2_df$error_xgb2^2)
 
-
-end_xg <- Sys.time()
-end_xg - start_xg
 
 rm(pred_xgb2_df)
 
