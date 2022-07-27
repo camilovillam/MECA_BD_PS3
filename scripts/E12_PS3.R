@@ -1669,8 +1669,82 @@ resumen_modelos[2,10] <- mean(pred_xgb2_df$error_xgb2^2)
 
 rm(pred_xgb2_df)
 
+###5.6.5. RandomForest 2 ----
 
-export(resumen_modelos,"./views/Resumen_modelos_bog.xlsx")
+
+# Identificamos cuántos cores tiene nuestra máquina
+n_cores <- detectCores()
+print(paste("Mi PC tiene", n_cores, "nucleos"))
+
+
+# Vamos a usar n_cores - 14 procesadores para esto
+cl <- makePSOCKcluster(14) 
+registerDoParallel(cl)
+
+RF_bog <- as.formula ("price ~  AVALUO_COM+
+                         ESTRATO+
+                         AVALUO_COM:area_apto+
+                         area_apto+
+                         num_banos+
+                         num_cuartos+
+                         num_parq+
+                         dist_tpubl+
+                         dist_hosp+
+                         dist_park+
+                         dist_ccomerc+
+                         p_upl")
+
+Tr_train_forest <- Tr_train_bog
+Tr_train_forest$geometry <- NULL
+
+set.seed(100)
+
+control_rf <- trainControl(method='cv', 
+                           number=5,
+                           verbose=FALSE,
+                           savePredictions = T)
+
+mtry <- sqrt(10) #Número de predictores
+
+tunegrid_rf <- expand.grid(.mtry=mtry)
+
+install.packages("randomForest")
+
+forest_bog <- train(RF_bog, 
+                data=Tr_train_forest, 
+                method='rf',
+                trControl = control_rf,
+                na.action  = na.pass,
+                tuneGrid=tunegrid_rf)
+forest_bog
+
+export(forest_bog,"./stores/trained_models/forest_bog.rds")
+
+pred_xgb2 <- predict(forest_bog,Tr_test_bog)
+pred_xgb2_df <- data.frame(pred_xgb2)
+
+#Le pego al DF con la predicción el precio real 
+pred_xgb2_df <- cbind (Tr_test_bog[,c("property_id","price")], pred_xgb2_df)
+
+pred_xgb2_df$geometry <- NULL #Elimino geometría
+
+pred_xgb2_df$error_xgb2 <- pred_xgb2_df$pred_xgb2 - pred_xgb2_df$price
+pred_xgb2_df$compra_xgb2 <- decision_compra(pred_xgb2_df$pred_xgb2,pred_xgb2_df$error_xgb2)
+
+resumen_modelos[3,1] <- "Bogotá D.C."
+resumen_modelos[3,2] <- nrow(pred_xgb2_df)
+resumen_modelos[3,3] <- "XGBoost bog 2"
+resumen_modelos[3,4] <- sum(pred_xgb2_df$price)
+resumen_modelos[3,5] <- sum(pred_xgb2_df$compra_xgb2)
+resumen_modelos[3,6] <- sum(pred_xgb2_df$price)-sum(pred_xgb2_df$compra_xgb2)
+resumen_modelos[3,7] <- sum(pred_xgb2_df$compra_xgb2>0)
+resumen_modelos[3,8] <- (sum(pred_xgb2_df$compra_xgb2>0)/nrow(pred_xgb2_df))*100
+resumen_modelos[3,9] <- sum(pred_xgb2_df$compra_xgb2>0) / sum(pred_xgb2_df$compra_xgb2)
+resumen_modelos[3,10] <- mean(pred_xgb2_df$error_xgb2^2)
+rm(pred_xgb2_df)
+
+export(resumen_modelos,"./views/Resumen_modelos_bog2.xlsx")
+
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 6. MODELO MEDELLÍN ----
