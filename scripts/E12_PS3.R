@@ -3189,6 +3189,59 @@ forest
 export(forest,"./stores/trained_models/forest.rds")
 
 
+
+
+### Random Forest 2: ----
+
+form_randomforest2 <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          num_parq +
+                          ESTRATO +
+                          area_apto:AVALUO_COM + 
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
+
+
+Tr_train_forest <- Tr_train
+Tr_train_forest$geometry <- NULL
+
+Tr_train_forest <- Tr_train_forest[complete.cases(Tr_train_forest), ] #No admite NAs
+nrow(Tr_train_forest)
+
+set.seed(100)
+
+control_rf <- trainControl(method='cv', 
+                           number=5,
+                           verbose=FALSE,
+                           savePredictions = T)
+
+mtry <- sqrt(12) #Número de predictores
+
+tunegrid_rf <- expand.grid(.mtry=mtry)
+
+start <- Sys.time()
+
+forest2 <- train(form_randomforest2, 
+                data=Tr_train_forest, 
+                method='rf',
+                trControl = control_rf,
+                na.action  = na.pass,
+                tuneGrid=tunegrid_rf)
+
+end <- Sys.time()
+end - start
+
+forest2
+export(forest2,"./stores/trained_models/forest2.rds")
+
+
+
+
+
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #10: ESTIMACIÓN MEJOR MODELO ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

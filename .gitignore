@@ -2,3 +2,4 @@
 .Rhistory
 .Rhistory
 views/~$ensayo_predicc_med_mod.xlsx
+stores/trained_models/forest.rds
