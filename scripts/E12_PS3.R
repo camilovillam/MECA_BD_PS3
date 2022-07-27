@@ -1096,7 +1096,8 @@ El_Poblado <- getbb(place_name = "Comuna 14 - El Poblado Medellín",
 class(El_Poblado)
 st_crs(El_Poblado)
 
-leaflet() %>% addTiles() %>% addPolygons(data=El_Poblado)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=test_med,color="red") %>% 
+  addPolygons(data=El_Poblado)
 
 
 
@@ -2481,16 +2482,16 @@ export(test,"./stores/test_compl.rds")
 export(train,"./stores/train_compl.rds")
 
 
-###############################################################
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #### 8. ESTADÍSTICAS DESCRIPTIVAS BASE UNIFICADA Y ENRIQUECIDA ----
-###############################################################
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 
 
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #9. REGRESIONES ----
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 #Inicializaciones comunes:
@@ -2568,7 +2569,7 @@ test_med <- import("./stores/Medellín/test_med_compl.rds")
 # Tr_test: Probar el modelo
 
 
-# Revisar: Generamos las particiones
+#: Generamos las particiones
 set.seed(100)
 split1 <- createDataPartition(train_med$price, p = .7)[[1]]
 length(split1) 
@@ -2655,9 +2656,19 @@ stargazer(regm6,regm7,regm8,regm9,regm10,type="text")
 
 ###OLS MED----
 
-form_MED <- as.formula("num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total +
-             factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc +
-             dist_park + num_parq")
+form_MED <- as.formula("price ~ num_banos +
+    bedrooms +
+    num_cuartos +
+    factor(ESTRATO) +
+    area_apto +
+    avaluo_total +
+    factor(COD_CAT_US) +
+    factor(COD_SUBCAT) +
+    dist_metro +
+    dist_hosp +
+    dist_ccomerc +
+    dist_park +
+    num_parq")
 
 
 regm1<-lm(form_MED,Tr_train_med)
@@ -2668,7 +2679,7 @@ OLSM <- train(form_MED,
               na.action  = na.pass,
               method="lm")
 
-export(OLSm,"./stores/trained_models/MED/OLS CV.rds")
+export(OLSM,"./stores/trained_models/MED/OLS CV.rds")
 
 
 ### Lasso MED ----
@@ -3283,8 +3294,6 @@ export(forest2,"./stores/trained_models/forest2.rds")
 
 
 
-
-
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #10: ESTIMACIÓN MEJOR MODELO ----
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3292,7 +3301,8 @@ export(forest2,"./stores/trained_models/forest2.rds")
 
 #Elimino NAs en Tr_test para tener siempre el mismo número de observaciones
 
-Tr_test_con_NA <- Tr_test #Lo guardo completo, por si algo
+#Tr_test_copy <- Tr_test #Lo guardo completo, por si algo
+Tr_test <- Tr_test_copy
 
 Tr_test$geometry <- NULL
 Tr_test <- Tr_test[complete.cases(Tr_test), ] #No admite NAs
@@ -3300,6 +3310,13 @@ nrow(Tr_test)
 
 
 #Inicialización de listas / matrices:
+
+
+resumen_modelos <- data.frame(matrix(rep(0,180),nrow=18,ncol=10))
+colnames(resumen_modelos) <- c("Ciudad", "Modelo","N_obs","Precio_lista","Dinero_gastado",
+                               "Dif_PLista_Gastado","Prop_compradas","%_compradas",
+                               "Precio_prom_compr","MSE_test")
+sapply(resumen_modelos, typeof)
 
 modelos_pred <- vector("list",50)   #Modelos entrenados
 pred_modelo <- vector("list",50)    #Predicciones sobre Tr_test
@@ -3344,6 +3361,7 @@ for (i in 1:length(archivos_modelos)){
 }
 
 
+export(resumen_modelos,"./views/Resumen Modelos Bog y Med.xlsx")
 
 
 
@@ -3355,6 +3373,7 @@ for (i in 1:length(archivos_modelos)){
 #10.1. Corrección final de NAs en TEST para evitar la exclusión de observaciones:
 
 colSums(is.na(test))
+nrow(test)
 
 #Las dos observaciones sin estrato (ubicadas en el Río Medellín!) son 
 #problemáticas para la predicción.
@@ -3365,7 +3384,7 @@ colSums(is.na(test))
 #Se les imputa Estrato 6:
 
 test_NA <- test[is.na(test$ESTRATO),]
-view(test_NA)
+#view(test_NA)
 
 test$ESTRATO[is.na(test$ESTRATO)] <- 6
 
@@ -3386,10 +3405,10 @@ colSums(is.na(test))
 ##10.1 Modelo unificado ---- 
 
 #Se carga el mejor modelo:
-#modelofinal <- readRDS("./stores/modelos_train/model.rds")
+modelofinal <- readRDS("./stores/trained_models/Random Forest 1.rds")
 
 #Se copia el objeto TRAIN del mejor modelo:
-modelofinal <- tree
+#modelofinal <- tree
 
 #Se predice el modelo en Test completo:
 test$pred_final <- predict(modelofinal,test)
@@ -3400,9 +3419,36 @@ colnames(submit) <- c("property_id","price")
 class(submit$price) = "Numeric"
 
 nrow(submit) - nrow(test)
+colSums(is.na(submit))
 view(submit)
 
 export(submit,"./document/predictions_garcia_molano_villa.csv")
+
+
+
+
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#12: GRÁFICOS FINALES ----
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+loc_bog <- read_sf("./stores/localidades_Bog_shp/Loca.shp")
+
+#Ensayos con Leaflet:
+  
+leaflet() %>% addTiles() %>% addCircleMarkers(data=test_bog,color="red") %>% 
+  addPolygons(data=loc_bog%>% filter(grepl("CHAPINERO",LocNombre)==TRUE))
+
+#Solo Chapinero
+
+leaflet() %>% addTiles() %>% addPolygons(data=loc_bog%>% filter(grepl("CHAPINERO",LocNombre)==TRUE))
+
+
+comunas_med <- read_sf("./stores/localidades_Bog_shp/Loca.shp")
+
+
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
