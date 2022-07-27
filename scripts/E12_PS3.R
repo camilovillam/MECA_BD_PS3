@@ -2488,9 +2488,9 @@ export(train,"./stores/train_compl.rds")
 
 
 
-###############################################################
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #9. REGRESIONES ----
-###############################################################
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 #Inicializaciones comunes:
@@ -2556,6 +2556,10 @@ stopCluster(cl)
 
 ##9.1. REGRESIONES MEDELLÍN ----
 
+train_med <- import("./stores/Medellín/train_med_compl.rds")
+test_med <- import("./stores/Medellín/test_med_compl.rds")
+
+
 ### 6.5.1. Partición de la base de datos Medellín en tres----
 
 #La base de datos Train se divide en tres particiones:
@@ -2588,141 +2592,130 @@ rm(list=c("other","split1","split2"))
 
 
 
-### Modelos básicos ----
+### Modelos básico. Se ensayan varios para escoger luego----
 nrow(Tr_train_med)
 colnames(Tr_train_med)
 colSums(is.na(Tr_train_med))
 
 
-reg1 <- lm(price ~ factor(ESTRATO),
+regm1 <- lm(price ~ factor(ESTRATO),
            data=Tr_train_med)
 
-reg2 <- lm(price ~ bedrooms + factor(ESTRATO), 
+regm2 <- lm(price ~ bedrooms + factor(ESTRATO), 
            data=Tr_train_med)
 
-reg3 <- lm(price ~ num_banos + bedrooms + factor(ESTRATO), 
+regm3 <- lm(price ~ num_banos + bedrooms + factor(ESTRATO), 
            data=Tr_train_med)
 
-reg4 <- lm(price ~ num_banos + bedrooms + factor(ESTRATO) + area_apto, 
+regm4 <- lm(price ~ num_banos + bedrooms + factor(ESTRATO) + area_apto, 
            data=Tr_train_med)
 
-reg5 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto, 
+regm5 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto, 
            data=Tr_train_med)
 
-reg6 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_m2, 
+regm6 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_m2, 
            data=Tr_train_med)
 
-reg7 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total, 
+regm7 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total, 
            data=Tr_train_med)
 
-reg8 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto:avaluo_m2, 
+regm8 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto:avaluo_m2, 
            data=Tr_train_med)
 
-reg9 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total +
+regm9 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total +
              factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc +
              dist_park + num_parq, 
            data=Tr_train_med)
 
-reg10 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total +
+regm10 <- lm(price ~ num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total +
               dist_metro + dist_hosp + dist_ccomerc + dist_park, 
            data=Tr_train_med)
 
 
 
-mean(reg8$residuals^2)
-mean(reg9$residuals^2)
-mean(reg10$residuals^2)
-
-stargazer(reg8,reg9,reg10,type="text")
-
-stargazer(reg1,reg2,reg3,reg4,reg5,type="text")
-stargazer(reg6,type="text")
-stargazer(reg5,reg6,reg7,reg8,reg9,type="text")
-stargazer(reg7,reg9,reg10,type="text")
-stargazer(reg6,reg7,type="text")
-
+mean(regm1$residuals^2)
+mean(regm2$residuals^2)
+mean(regm3$residuals^2)
+mean(regm4$residuals^2)
+mean(regm5$residuals^2)
+mean(regm6$residuals^2)
+mean(regm7$residuals^2)
+mean(regm8$residuals^2)
+mean(regm9$residuals^2)
+mean(regm10$residuals^2)
 
 
-########Pruebas con lagsarlm----
+stargazer(regm1,regm2,regm3,regm4,regm5,type="text")
+stargazer(regm6,regm7,regm8,regm9,regm10,type="text")
+
+#El  modelo con el mejor MSE es el 9; con él se continúa.
+
+### Modelos OLS, LASSO, RIDGE, ELNET CON CROSS VALIDATION ----
 
 
-Tr_train_sp <- as(Tr_train, "Spatial")
+###OLS MED----
 
-Tr_train_neib <- dnearneigh(coordinates(Tr_train_sp), 0, 0.1, longlat = TRUE)
-
-listw <- nb2listw(Tr_train_neib, style="W", zero.policy = TRUE)
-
-# Prueba 1, saca error. Empty neighbour sets found.
-
-reg1<-lagsarlm(modelo1,data=Tr_train, listw=listw)
-reg2<-lagsarlm(modelo2,data=Tr_train, listw=listw)
-reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw)
-
-stargazer(reg1,reg2,reg3,type="text")
-
-# Prueba 2, Usando eigen valores. Funciona. --- probar después y revisar con manzanas porqu eno funciona
-
-ev <- eigenw(listw)
-W <- as(listw, "CsparseMatrix")
-trMatc <- trW(W, type="mult")
+form_MED <- as.formula("num_banos + bedrooms + num_cuartos + factor(ESTRATO) + area_apto + avaluo_total +
+             factor(COD_CAT_US) + factor(COD_SUBCAT) + dist_metro + dist_hosp + dist_ccomerc +
+             dist_park + num_parq")
 
 
-reg1<-lagsarlm(modelo1,data=Tr_train, listw=listw,
-               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
+regm1<-lm(form_MED,Tr_train_med)
 
-reg2<-lagsarlm(modelo2,data=Tr_train, listw=listw,
-               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
+OLSM <- train(form_MED,
+              data = Tr_train_med,
+              trControl=trainControl(method="cv",number=5),
+              na.action  = na.pass,
+              method="lm")
 
-reg3<-lagsarlm(modelo3,data=Tr_train, listw=listw,
-               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
-
-
-stargazer(reg1,reg2,reg3,type="text")
+export(OLSm,"./stores/trained_models/MED/OLS CV.rds")
 
 
+### Lasso MED ----
+
+lambda <- 10^seq(-2, 3, length = 200)
+
+lassom <- train(form_MED,
+                data = Tr_train_med,
+                method = "glmnet",
+                trControl = trainControl("cv", number = 5),
+                na.action  = na.pass,
+                tuneGrid = expand.grid(alpha = 1,lambda=lambda),
+                preProcess = c("center", "scale"))
+
+export(lassom,"./stores/trained_models/MED/Lasso.rds")
 
 
-#Definición del control (a usarse en los demás modelos)
-#fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
+### Ridge MED ----
 
-control <- trainControl(method = "cv", number = 5,
-                        #summaryFunction = fiveStats, 
-                        #classProbs = TRUE,
-                        verbose=FALSE,
-                        savePredictions = T)
+ridgem <- train(form_MED,
+                data = Tr_train_med,
+                method = "glmnet",
+                trControl = trainControl("cv", number = 5),
+                na.action  = na.pass,
+                tuneGrid = expand.grid(alpha = 0,lambda=lambda),
+                preProcess = c("center", "scale"))
 
-
-#Árbol MED:
-
-###Modelo árbol básico (CART) ----
-
-# train_med_fact <- Tr_train_med
-# train_med_fact$ESTRATO <- factor(train_med_fact$ESTRATO)
-# train_med_fact$COD_CAT_US <- factor(train_med_fact$COD_CAT_US)
-# train_med_fact$COD_SUBCAT <- factor(train_med_fact$COD_SUBCAT)
-
-# colnames(train_med_fact)
-
-form_treem <- as.formula("price ~ 
-                          num_banos + 
-                          bedrooms + 
-                          num_cuartos + 
-                          factor(ESTRATO) + 
-                          area_apto + 
-                          avaluo_total +
-                          dist_metro + 
-                          dist_hosp + 
-                          dist_ccomerc + 
-                          dist_park")
+export(ridgem,"./stores/trained_models/MED/Ridge.rds")
 
 
-#cp_alpha<-seq(from = 0, to = 0.1, length = 10)
+### Elastic Net MED ----
 
-#Ensayo de tree con un control de internet:
+elnetm <- train(form_MED,
+                data = Tr_train_med,
+                method = "glmnet",
+                trControl = trainControl("cv", number = 5),
+                na.action  = na.pass,
+                preProcess = c("center", "scale"))
+
+export(elnetm,"./stores/trained_models/MED/Elastic Net.rds")
+
+
+#Árbol MED ----
 
 treem <- train(
-  form_treem,
-  data = Tr_train_med, #Debería ser la de las variables con Factores?
+  form_MED,
+  data = Tr_train_med,
   method = "rpart",
   trControl = control,
   parms=list(split='Gini'),
@@ -2732,45 +2725,10 @@ treem <- train(
   #preProcess = c("center", "scale")
 )
 
-treem
-rpart.plot::prp(treem$finalModel)
-
-nrow(Tr_test_med)
-
-#Cálculo del índice desempeño del modelo:
-pred_treem <- predict(treem,Tr_test_med)
-pred_treem_df <- data.frame(pred_treem)
+export(treem,"./stores/trained_models/MED/Tree.rds")
 
 
-#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test_med) - nrow(pred_treem_df) #Dif. entre la base y el num de predicciones
-colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
-
-#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_treem_df <- cbind(filter(Tr_test_med[,c("property_id","price")],
-                            !(is.na(Tr_test_med$ESTRATO))), #Filtra obs de la var con NAs
-                      pred_treem_df)
-pred_treem_df$geometry <- NULL #Elimino geometría
-pred_treem_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
-
-pred_treem_df$error_treem1 <- pred_treem_df$pred_treem -pred_treem_df$price
-pred_treem_df$compra_treem1 <- decision_compra(pred_treem_df$pred_treem,pred_treem_df$error_treem1)
-
-resumen_modelos[1,1] <- "Medellín"
-resumen_modelos[1,2] <- nrow(pred_treem_df)
-resumen_modelos[1,3] <- "Tree 1"
-resumen_modelos[1,4] <- sum(pred_treem_df$price)
-resumen_modelos[1,5] <- sum(pred_treem_df$compra_treem1)
-resumen_modelos[1,6] <- sum(pred_treem_df$price) - sum(pred_treem_df$compra_treem1)
-resumen_modelos[1,7] <- sum(pred_treem_df$compra_treem1>0)
-resumen_modelos[1,8] <- (sum(pred_treem_df$compra_treem1>0)/nrow(pred_treem_df))*100
-resumen_modelos[1,9] <- sum(pred_treem_df$compra_treem1>0) / sum(pred_treem_df$compra_treem1)
-resumen_modelos[1,10] <- mean(pred_treem_df$error_treem1^2)
-
-
-###Modelo XGBoost ----
-
-form_xgboost <- form_tree
+###Modelo XGBoost Med ----
 
 grid_default <- expand.grid(nrounds = c(250,500),
                             max_depth = c(4,6,8),
@@ -2780,132 +2738,8 @@ grid_default <- expand.grid(nrounds = c(250,500),
                             colsample_bytree = c(0.7),
                            subsample = c(0.6))
 
-start_xg <- Sys.time()
-
-xgboost <- train(
-  form_xgboost,
-  data = Tr_train_med,
-  method = "xgbTree",
-  trControl = control,
-  na.action  = na.pass,
-  tuneGrid = grid_default,
-  preProcess = c("center", "scale")
-)
-xgboost
-
-#Cálculo del índice desempeño del modelo:
-pred_xgb <- predict(xgboost,Tr_test_med)
-pred_xgb_df <- data.frame(pred_xgb)
-
-#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test_med) - nrow(pred_xgb_df) #Dif. entre la base y el num de predicciones
-colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
-
-#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_xgb_df <- cbind(filter(Tr_test_med[,c("property_id","price","COD_CAT_US")],
-                            !(is.na(Tr_test_med$ESTRATO))), #Filtra obs de la var con NAs
-                     pred_xgb_df)
-pred_xgb_df$geometry <- NULL #Elimino geometría
-pred_xgb_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
-
-pred_xgb_df$error_xgb1 <- pred_xgb_df$pred_xgb -pred_xgb_df$price
-pred_xgb_df$compra_xgb1 <- decision_compra(pred_xgb_df$pred_xgb,pred_xgb_df$error_xgb1)
-
-resumen_modelos[2,1] <- "XGBoost 1"
-resumen_modelos[2,2] <- sum(pred_xgb_df$compra_xgb1)
-resumen_modelos[2,3] <- sum(pred_xgb_df$compra_xgb1>0)
-resumen_modelos[2,4] <- resumen_modelos[2,2] / resumen_modelos[2,3]
-resumen_modelos[2,5] <- mean(pred_xgb_df$error_xgb1^2)
-
-
-end_xg <- Sys.time()
-end_xg - start_xg
-
-
-nrow(Tr_test_med)-nrow(pred_tree_df)
-colSums(is.na(Tr_test_med))
-
-rm(pred_xgb_df)
-
-#### ENSAYO 2
-
-form_tree2 <- as.formula("price ~ 
-                          num_banos + 
-                          bedrooms + 
-                          num_cuartos + 
-                          factor(ESTRATO) + 
-                          area_apto + 
-                          dist_metro + 
-                          dist_hosp + 
-                          dist_ccomerc + 
-                          dist_park")
-
-
-#cp_alpha<-seq(from = 0, to = 0.1, length = 10)
-
-#Ensayo de tree con un control de internet:
-
-tree2 <- train(
-  form_tree2,
-  data = Tr_train_med,
-  method = "rpart",
-  trControl = control,
-  parms=list(split='Gini'),
-  #tuneGrid = expand.grid(cp = cp alpha)#,
-  na.action  = na.pass,
-  tuneLength=200
-  #preProcess = c("center", "scale")
-)
-
-tree2
-rpart.plot::prp(tree2$finalModel)
-
-
-#Cálculo del índice desempeño del modelo:
-pred_tree2 <- predict(tree2,Tr_test_med)
-pred_tree2_df <- data.frame(pred_tree2)
-
-
-#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test_med) - nrow(pred_tree2_df) #Dif. entre la base y el num de predicciones
-colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
-
-#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_tree2_df <- cbind(filter(Tr_test_med[,c("property_id","price")],
-                             !(is.na(Tr_test_med$ESTRATO))), #Filtra obs de la var con NAs
-                      pred_tree2_df)
-pred_tree2_df$geometry <- NULL #Elimino geometría
-pred_tree2_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
-
-pred_tree2_df$error_tree2 <- pred_tree2_df$pred_tree2 -pred_tree2_df$price
-pred_tree2_df$compra_tree2 <- decision_compra(pred_tree2_df$pred_tree2,pred_tree2_df$error_tree2)
-
-resumen_modelos[3,1] <- "Tree 2"
-resumen_modelos[3,2] <- sum(pred_tree2_df$compra_tree2)
-resumen_modelos[3,3] <- sum(pred_tree2_df$compra_tree2>0)
-resumen_modelos[3,4] <- resumen_modelos[3,2] / resumen_modelos[3,3]
-resumen_modelos[3,5] <- mean(pred_tree2_df$error_tree2^2)
-
-rm(pred_tree2_df)
-
-
-
-###Modelo XGBoost2 ----
-
-form_xgboost2 <- form_tree2
-
-grid_default <- expand.grid(nrounds = c(250,500),
-                            max_depth = c(4,6,8),
-                            eta = c(0.01,0.3,0.5),
-                            gamma = c(0,1),
-                            min_child_weight = c(10, 25,50),
-                            colsample_bytree = c(0.7),
-                            subsample = c(0.6))
-
-start_xg <- Sys.time()
-
-xgboost2 <- train(
-  form_xgboost2,
+xgboostm <- train(
+  form_MED,
   data = Tr_train_med,
   method = "xgbTree",
   trControl = control,
@@ -2914,47 +2748,7 @@ xgboost2 <- train(
   preProcess = c("center", "scale")
 )
 
-
-xgboost2
-pred_xgb2 <- predict(xgboost2,Tr_test_med)
-pred_xgb2_df <- data.frame(pred_xgb2)
-
-end_xg <- Sys.time()
-start_xg-end_xg
-
-
-
-#Cálculo del índice desempeño del modelo:
-
-#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test_med) - nrow(pred_xgb2_df) #Dif. entre la base y el num de predicciones
-colSums(is.na(Tr_test_med)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
-
-#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_xgb2_df <- cbind(filter(Tr_test_med[,c("property_id","price","COD_CAT_US")],
-                            !(is.na(Tr_test_med$ESTRATO))), #Filtra obs de la var con NAs
-                     pred_xgb2_df)
-pred_xgb2_df$geometry <- NULL #Elimino geometría
-pred_xgb2_df$COD_CAT_US <- NULL #Elimino la variable que tenía NAs, aquí no la necesito
-
-pred_xgb2_df$error_xgb2 <- pred_xgb2_df$pred_xgb2 -pred_xgb2_df$price
-pred_xgb2_df$compra_xgb2 <- decision_compra(pred_xgb2_df$pred_xgb2,pred_xgb2_df$error_xgb2)
-
-resumen_modelos[4,1] <- "XGBoost 2"
-resumen_modelos[4,2] <- sum(pred_xgb2_df$compra_xgb2)
-resumen_modelos[4,3] <- sum(pred_xgb2_df$compra_xgb2>0)
-resumen_modelos[4,4] <- resumen_modelos[4,2] / resumen_modelos[4,3]
-resumen_modelos[4,5] <- mean(pred_xgb2_df$error_xgb2^2)
-
-
-end_xg <- Sys.time()
-end_xg - start_xg
-
-
-rm(pred_xgb2_df)
-
-
-export(resumen_modelos,"./views/Resumen_modelos1.xlsx")
+export(xgboostm,"./stores/trained_models/MED/XGBoost.rds")
 
 
 
@@ -3005,7 +2799,252 @@ control <- trainControl(method = "cv", number = 5,
                         savePredictions = T)
 
 
-##Modelo Tree_unificado
+### Modelos OLS CON CROSS VALIDATION ----
+
+###OLS 1 ----
+
+form_OLS1 <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          num_parq +
+                          factor(ESTRATO) + 
+                          area_apto + 
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
+
+
+reg1<-lm(form_OLS_1,Tr_train)
+
+OLS1 <- train(form_OLS1,
+              data = Tr_train,
+              trControl=trainControl(method="cv",number=5),
+              na.action  = na.pass,
+              method="lm")
+
+export(OLS1,"./stores/trained_models/OLS1.rds")
+
+
+###OLS 2 ----
+
+form_OLS2 <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          factor(ESTRATO) + 
+                          area_apto + 
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
+
+
+reg2<-lm(form_OLS2,Tr_train)
+
+OLS2 <- train(form_OLS2,
+              data = Tr_train,
+              trControl=trainControl(method="cv",number=5),
+              na.action  = na.pass,
+              method="lm")
+
+export(OLS2,"./stores/trained_models/OLS2.rds")
+
+
+###OLS 3 ----
+
+form_OLS3 <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          factor(ESTRATO) + 
+                          area_apto:AVALUO_COM + 
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
+
+
+reg3<-lm(form_OLS3,Tr_train)
+
+OLS3 <- train(form_OLS3,
+              data = Tr_train,
+              trControl=trainControl(method="cv",number=5),
+              na.action  = na.pass,
+              method="lm")
+
+export(OLS3,"./stores/trained_models/OLS3.rds")
+
+
+###OLS 4 ----
+
+form_OLS4 <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          factor(ESTRATO) + 
+                          area_apto:AVALUO_COM + 
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc")
+
+
+reg4 <- lm(form_OLS4,Tr_train)
+
+OLS4 <- train(form_OLS4,
+              data = Tr_train,
+              trControl=trainControl(method="cv",number=5),
+              na.action  = na.pass,
+              method="lm")
+
+export(OLS4,"./stores/trained_models/OLS4.rds")
+
+
+###OLS 5 ----
+
+form_OLS5 <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          factor(ESTRATO) + 
+                          area_apto +
+                          AVALUO_COM + 
+                          dist_tpubl")
+
+
+reg5 <- lm(form_OLS5,Tr_train)
+
+OLS5 <- train(form_OLS5,
+              data = Tr_train,
+              trControl=trainControl(method="cv",number=5),
+              na.action  = na.pass,
+              method="lm")
+
+export(OLS5,"./stores/trained_models/OLS5.rds")
+
+###OLS 6 ----
+
+form_OLS6 <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          num_parq +
+                          factor(ESTRATO) + 
+                          AVALUO_COM +
+                          area_apto + 
+                          dist_tpubl + 
+                          dist_hosp + 
+                          dist_ccomerc + 
+                          dist_park")
+
+
+reg6<-lm(form_OLS6,Tr_train)
+
+OLS6 <- train(form_OLS6,
+              data = Tr_train,
+              trControl=trainControl(method="cv",number=5),
+              na.action  = na.pass,
+              method="lm")
+
+export(OLS6,"./stores/trained_models/OLS6.rds")
+
+
+stargazer(reg1,reg2,reg3,reg4,reg6, type="text")
+
+
+#### Prueba con lagsarlm por sesgo ----
+# Usando eigen valores
+
+Tr_train_sp <- as(Tr_train, "Spatial")
+Tr_train_neib <- dnearneigh(coordinates(Tr_train_sp), 0, 0.1, longlat = TRUE)
+listw <- nb2listw(Tr_train_neib, style="W", zero.policy = TRUE)
+
+
+ev <- eigenw(listw)
+W <- as(listw, "CsparseMatrix")
+trMatc <- trW(W, type="mult")
+
+
+lagsarlm_reg <-lagsarlm(form_OLS4,data=Tr_train, listw=listw,
+               method="eigen", quiet=FALSE, control=list(pre_eig=ev, OrdVsign=1))
+
+export(lagsarlm_reg,"./stores/trained_models/Lagsarlm Eigenvalues.rds")
+
+
+
+#### Modelos Lasso , Ridge, Elnet----
+
+### Lasso ----
+
+lambda <- 10^seq(-2, 3, length = 200)
+
+lasso1 <- train(form_OLS2,
+                data = Tr_train,
+                method = "glmnet",
+                trControl = trainControl("cv", number = 5),
+                na.action  = na.pass,
+                tuneGrid = expand.grid(alpha = 1,lambda=lambda),
+                preProcess = c("center", "scale"))
+
+export(lasso1,"./stores/trained_models/lasso1.rds")
+
+
+lasso2 <- train(form_OLS6,
+                data = Tr_train,
+                method = "glmnet",
+                trControl = trainControl("cv", number = 5),
+                na.action  = na.pass,
+                tuneGrid = expand.grid(alpha = 1,lambda=lambda),
+                preProcess = c("center", "scale"))
+
+export(lasso2,"./stores/trained_models/lasso2.rds")
+
+### Ridge ----
+
+ridge1 <- train(form_OLS2,
+                data = Tr_train,
+                method = "glmnet",
+                trControl = trainControl("cv", number = 5),
+                na.action  = na.pass,
+                tuneGrid = expand.grid(alpha = 0,lambda=lambda),
+                preProcess = c("center", "scale"))
+
+export(ridge1,"./stores/trained_models/ridge1.rds")
+
+ridge2 <- train(form_OLS6,
+                data = Tr_train,
+                method = "glmnet",
+                trControl = trainControl("cv", number = 5),
+                na.action  = na.pass,
+                tuneGrid = expand.grid(alpha = 0,lambda=lambda),
+                preProcess = c("center", "scale"))
+
+export(ridge2,"./stores/trained_models/ridge2.rds")
+
+
+### Elastic Net ----
+
+elnet1 <- train(form_OLS2,
+                data = Tr_train,
+                method = "glmnet",
+                trControl = trainControl("cv", number = 5),
+                na.action  = na.pass,
+                preProcess = c("center", "scale"))
+
+export(elnet1,"./stores/trained_models/elnet1.rds")
+
+elnet2 <- train(form_OLS6,
+                data = Tr_train,
+                method = "glmnet",
+                trControl = trainControl("cv", number = 5),
+                na.action  = na.pass,
+                preProcess = c("center", "scale"))
+
+export(elnet2,"./stores/trained_models/elnet2.rds")
+
+
+#### TREE 1 (CART) ----
 
 colnames(train)
 
@@ -3016,7 +3055,6 @@ form_tree <- as.formula("price ~
                           num_parq +
                           factor(ESTRATO) + 
                           area_apto + 
-                          AVALUO_COM +
                           dist_tpubl + 
                           dist_hosp + 
                           dist_ccomerc + 
@@ -3041,39 +3079,44 @@ tree <- train(
 
 tree
 rpart.plot::prp(tree$finalModel)
+predict(tree,Tr_test)
 
-nrow(Tr_test)
-
-#Cálculo del índice desempeño del modelo:
-pred_tree <- predict(tree,Tr_test)
-pred_tree_df <- data.frame(pred_tree)
+export(tree,"./stores/trained_models/tree.rds")
 
 
-#Identifico la variable que tenía NAs para poder luego filtrar observaciones:
-nrow(Tr_test) - nrow(pred_tree_df) #Dif. entre la base y el num de predicciones
-colSums(is.na(Tr_test)) #Reviso cuál variable tenía la cantidad de NAs de la resta anterior.
+##Tree 2
 
-#Le pego al DF con la predicción el precio real y la variable que tenía NAs para filtrarla:
-pred_tree_df <- cbind(filter(Tr_test[,c("property_id","price")],
-                             !(is.na(Tr_test$ESTRATO)|is.na(Tr_test$AVALUO_COM))), #Filtra obs de la var con NAs
-                      pred_tree_df)
+form_tree2 <- as.formula("price ~ 
+                          num_banos + 
+                          bedrooms + 
+                          num_cuartos + 
+                          factor(ESTRATO) + 
+                          area_apto")
 
-nrow(pred_tree_df)
-pred_tree_df$geometry <- NULL #Elimino geometría
 
-pred_tree_df$error_tree1 <- pred_tree_df$pred_tree -pred_tree_df$price
-pred_tree_df$compra_tree1 <- decision_compra(pred_tree_df$pred_tree,pred_tree_df$error_tree1)
+#cp_alpha<-seq(from = 0, to = 0.1, length = 10)
 
-resumen_modelos[2,1] <- "Bog+Med"
-resumen_modelos[2,2] <- nrow(pred_tree_df)
-resumen_modelos[2,3] <- "Tree 2"
-resumen_modelos[2,4] <- sum(pred_tree_df$price)
-resumen_modelos[2,5] <- sum(pred_tree_df$compra_tree1)
-resumen_modelos[2,6] <- sum(pred_tree_df$price) - sum(pred_tree_df$compra_tree1)
-resumen_modelos[2,7] <- sum(pred_tree_df$compra_tree1>0)
-resumen_modelos[2,8] <- (sum(pred_tree_df$compra_tree1>0)/nrow(pred_tree_df))*100
-resumen_modelos[2,9] <- sum(pred_tree_df$compra_tree1>0) / sum(pred_tree_df$compra_tree1)
-resumen_modelos[2,10] <- mean(pred_tree_df$error_tree1^2)
+#Ensayo de tree con un control de internet:
+
+tree2 <- train(
+  form_tree2,
+  data = Tr_train, #Debería ser la de las variables con Factores?
+  method = "rpart",
+  trControl = control,
+  parms=list(split='Gini'),
+  #tuneGrid = expand.grid(cp = cp alpha)#,
+  na.action  = na.pass,
+  tuneLength=200
+  #preProcess = c("center", "scale")
+)
+
+tree2
+rpart.plot::prp(tree2$finalModel)
+predict(tree2,Tr_test)
+
+export(tree2,"./stores/trained_models/tree2.rds")
+
+
 
 
 
@@ -3264,14 +3307,6 @@ pred_modelo <- vector("list",50)    #Predicciones sobre Tr_test
 #Se leen los archivos del directorio
 archivos_modelos <- c(list.files("./stores/trained_models",include.dirs=TRUE))
 
-#Nombres de los modelos:
-resumen_modelos[1,1] <- "Bog+Med"
-resumen_modelos[1,2] <- "XGBoost 1"
-resumen_modelos[2,1] <- "Bog+Med"
-resumen_modelos[2,2] <- "XGBoost 2"
-resumen_modelos[3,1] <- "Bog+Med"
-resumen_modelos[3,2] <- "Random Forest 1"
-
 
 for (i in 1:length(archivos_modelos)){
   
@@ -3295,6 +3330,8 @@ for (i in 1:length(archivos_modelos)){
   
   colnames(pred_modelo[[i]]) <- c("property_id","price","prediction","error","valor_compra")
   
+  resumen_modelos[i,1] <- "Bog+Med"
+  resumen_modelos[i,2] <- gsub(".rds","",archivos_modelos[i])
   resumen_modelos[i,3] <- nrow(pred_modelo[[i]])
   resumen_modelos[i,4] <- sum(pred_modelo[[i]][pred_modelo[[i]][,5]>0,2])
   resumen_modelos[i,5] <- sum(pred_modelo[[i]][,5])
