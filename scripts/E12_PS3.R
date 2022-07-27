@@ -2503,7 +2503,7 @@ train <- import("./stores/train_compl.rds")
 ### Matriz de desempeño de los modelos:----
 
 resumen_modelos <- data.frame(matrix(rep(0,250),nrow=25,ncol=10))
-colnames(resumen_modelos) <- c("Ciudad","N_obs", "Modelo","Precio_lista","Dinero_gastado",
+colnames(resumen_modelos) <- c("Ciudad", "Modelo","N_obs","Precio_lista","Dinero_gastado",
                                "Dif_PLista_Gastado","Prop_compradas","%_compradas",
                                "Precio_prom_compr","MSE_test")
 sapply(resumen_modelos, typeof)
@@ -2522,10 +2522,17 @@ sapply(resumen_modelos, typeof)
 
 #Función para calcular la decisión de compra.
 #Entrada: decis_compra(x=valores_predichos,y=error)
+# 
+# decision_compra <- function(x,y) case_when(y > 0 ~ x,
+#                                            abs(y) < 40000000 ~ x,
+#                                            abs(y) > 40000000 ~ 0)
 
-decision_compra <- function(x,y) case_when(y > 0 ~ x,
-                                           abs(y) < 40000000 ~ x,
-                                           abs(y) > 40000000 ~ 0)
+
+#Entrada: decis_compra(y=valores_lista,y_hat=valores_predichos)
+decision_compra <- function(y,y_hat) case_when(y_hat >= y ~ y_hat,
+                                           y - y_hat < 40000000 ~ y_hat,
+                                           y - y_hat > 40000000 ~ 0)
+
 
 
 
@@ -3196,43 +3203,55 @@ Tr_test <- Tr_test[complete.cases(Tr_test), ] #No admite NAs
 nrow(Tr_test)
 
 
-#Se cargan los modelos:
+#Inicialización de listas / matrices:
 
-modelos_pred <- vector("list",20)
-modelos_pred[[1]] <- readRDS("./stores/modelos_train/model.rds")
+modelos_pred <- vector("list",50)   #Modelos entrenados
+pred_modelo <- vector("list",50)    #Predicciones sobre Tr_test
 
+#Se leen los archivos del directorio
+archivos_modelos <- c(list.files("./stores/trained_models",include.dirs=TRUE))
 
-#Listas:
-modelos_pred[[1]]#Train models
-pred_modelo[[1]] #Predicciones sobre Tr_test
-pred_modelo_df[[1]]#Igual pero en DF
-errores_mod[[1]] # Errores de los modelos
-
-#Cálculo del índice desempeño del modelo:
-pred_modelo[[1]] <- predict(modelos_pred[[1]],Tr_test)
-pred_modelo_df[[1]] <- data.frame(pred_modelo[[1]] )
-
-#Le pego al DF con la predicción el precio real
-pred_modelo_df[[1]] <- cbind(Tr_test[,c("property_id","price")],
-                             pred_modelo_df[[1]])
-
-pred_modelo_df[[1]]$geometry <- NULL #Elimino geometría
-nrow(pred_modelo_df[[1]])
-
-errores_mod[[1]] <- pred_modelo_df[[1]]$pred_tree -pred_tree_df$price
-pred_tree_df$compra_tree1 <- decision_compra(pred_tree_df$pred_tree,pred_tree_df$error_tree1)
-
+#Nombres de los modelos:
+resumen_modelos[1,1] <- "Bog+Med"
+resumen_modelos[1,2] <- "XGBoost 1"
 resumen_modelos[2,1] <- "Bog+Med"
-resumen_modelos[2,2] <- nrow(pred_tree_df)
-resumen_modelos[2,3] <- "Tree 2"
-resumen_modelos[2,4] <- sum(pred_tree_df$price)
-resumen_modelos[2,5] <- sum(pred_tree_df$compra_tree1)
-resumen_modelos[2,6] <- sum(pred_tree_df$price) - sum(pred_tree_df$compra_tree1)
-resumen_modelos[2,7] <- sum(pred_tree_df$compra_tree1>0)
-resumen_modelos[2,8] <- (sum(pred_tree_df$compra_tree1>0)/nrow(pred_tree_df))*100
-resumen_modelos[2,9] <- sum(pred_tree_df$compra_tree1>0) / sum(pred_tree_df$compra_tree1)
-resumen_modelos[2,10] <- mean(pred_tree_df$error_tree1^2)
+resumen_modelos[2,2] <- "XGBoost 2"
+resumen_modelos[3,1] <- "Bog+Med"
+resumen_modelos[3,2] <- "Random Forest 1"
 
+
+for (i in 1:length(archivos_modelos)){
+  
+  #Se cargan los modelos:
+  modelos_pred[[i]] <- readRDS(paste0("./stores/trained_models/",archivos_modelos[i]))
+  
+  #Cálculo del índice desempeño del modelo:
+  pred_modelo[[i]] <- predict(modelos_pred[[i]],Tr_test)
+  
+  #Le pego al DF con la predicción el precio real
+  pred_modelo[[i]] <- cbind(Tr_test[,c("property_id","price")],
+                            pred_modelo[[i]])
+  
+  pred_modelo[[i]] <- cbind(pred_modelo[[i]],
+                            (pred_modelo[[i]][,2] - pred_modelo[[i]][,3])/1000000) #Unidad: millones
+  
+  pred_modelo[[i]] <- cbind(pred_modelo[[i]],
+                            decision_compra(
+                              pred_modelo[[i]][,2],pred_modelo[[i]][,3]))
+  
+  
+  colnames(pred_modelo[[i]]) <- c("property_id","price","prediction","error","valor_compra")
+  
+  resumen_modelos[i,3] <- nrow(pred_modelo[[i]])
+  resumen_modelos[i,4] <- sum(pred_modelo[[i]][pred_modelo[[i]][,5]>0,2])
+  resumen_modelos[i,5] <- sum(pred_modelo[[i]][,5])
+  resumen_modelos[i,6] <- sum(pred_modelo[[i]][pred_modelo[[i]][,5]>0,2]) - sum(pred_modelo[[i]][,5])
+  resumen_modelos[i,7] <- sum(pred_modelo[[i]][,5]>0)
+  resumen_modelos[i,8] <- (sum(pred_modelo[[i]][,5]>0)/nrow(pred_modelo[[i]]))*100
+  resumen_modelos[i,9] <- sum(pred_modelo[[i]][,5]>0) / sum(pred_modelo[[i]][,5])
+  resumen_modelos[i,10] <- mean((pred_modelo[[i]][,4]*1000000)^2)
+  
+}
 
 
 
