@@ -3,3 +3,9 @@
 .Rhistory
 views/~$ensayo_predicc_med_mod.xlsx
 stores/trained_models/forest.rds
+stores/trained_models/Random Forest 1.rds
+stores/trained_models/Random Forest 2.rds
+stores/trained_models/Tree 1.rds
+stores/trained_models/Tree 2.rds
+stores/trained_models_bog/Random Forest.rds
+stores/trained_models_med/Tree.rds
